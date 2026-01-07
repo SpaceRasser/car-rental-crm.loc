@@ -53,7 +53,13 @@
 
                 <div>
                     <label class="text-sm text-gray-600">Статус надёжности</label>
-                    <select wire:model.defer="reliability_status" class="mt-1 w-full rounded border-gray-300">
+                    <input
+                        type="text"
+                        placeholder="Поиск статуса..."
+                        data-select-target="client-reliability-select"
+                        class="mt-1 w-full rounded border-gray-300 text-sm"
+                    />
+                    <select id="client-reliability-select" wire:model.defer="reliability_status" class="mt-2 w-full rounded border-gray-300">
                         @foreach($statuses as $k => $label)
                         <option value="{{ $k }}">{{ $label }}</option>
                         @endforeach

@@ -17,7 +17,7 @@ class TestDriveCatalogController extends Controller
         $query = Car::query()
             ->where('is_active', true)
             ->where('status', 'available')
-            ->with('mainPhoto');
+            ->with(['mainPhoto', 'photos']);
 
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($q) use ($search) {

@@ -49,7 +49,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 @forelse($cars as $car)
                     @php
-                        $photoPath = $car->mainPhoto?->path;
+                        $photoPath = $car->mainPhoto?->path ?? $car->photos->first()?->path;
                     @endphp
                     <div class="relative bg-white rounded shadow overflow-hidden group">
                         <a href="{{ route('client.catalog.test-drives.show', $car) }}" class="absolute inset-0 z-0" aria-label="Открыть карточку авто"></a>

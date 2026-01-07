@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Каталог для аренды</h2>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Каталог аренды</h2>
             <div class="text-sm text-gray-500">Доступно: {{ $cars->total() }}</div>
         </div>
     </x-slot>
@@ -9,7 +9,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <div class="bg-white rounded shadow p-4">
-                <form method="get" action="{{ route('client.catalog.rentals') }}" class="grid grid-cols-1 md:grid-cols-6 gap-3 text-sm">
+                <form method="get" action="{{ route('manager.catalog.rentals') }}" class="grid grid-cols-1 md:grid-cols-6 gap-3 text-sm">
                     <input
                         type="text"
                         name="search"
@@ -59,7 +59,7 @@
 
                     <div class="md:col-span-6 flex items-center justify-between gap-3">
                         <button type="submit" class="px-4 py-2 rounded bg-gray-800 text-white text-sm">Показать</button>
-                        <a href="{{ route('client.catalog.rentals') }}" class="text-xs text-gray-500">Сбросить фильтры</a>
+                        <a href="{{ route('manager.catalog.rentals') }}" class="text-xs text-gray-500">Сбросить фильтры</a>
                     </div>
                 </form>
             </div>
@@ -70,7 +70,7 @@
                         $photoPath = $car->mainPhoto?->path ?? $car->photos->first()?->path;
                     @endphp
                     <div class="relative bg-white rounded shadow overflow-hidden group">
-                        <a href="{{ route('client.catalog.rentals.show', $car) }}" class="absolute inset-0 z-0" aria-label="Открыть карточку авто"></a>
+                        <a href="{{ route('manager.cars.show', $car) }}" class="absolute inset-0 z-0" aria-label="Открыть карточку авто"></a>
                         <div class="relative z-10">
                             <div class="aspect-[4/3] bg-gray-100 overflow-hidden">
                                 @if($photoPath)
@@ -86,9 +86,14 @@
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <div class="text-lg font-semibold">{{ number_format((float)$car->daily_price, 2, '.', ' ') }} ₽/сутки</div>
-                                    <a href="{{ route('client.catalog.rentals.show', $car) }}" class="relative z-20 px-3 py-1.5 rounded bg-gray-800 text-white text-xs">
-                                        Забронировать
-                                    </a>
+                                    <div class="flex items-center gap-2">
+                                        <a href="{{ route('manager.cars.show', $car) }}" class="relative z-20 px-3 py-1.5 rounded border text-xs">
+                                            Подробнее
+                                        </a>
+                                        <a href="{{ route('manager.cars.edit', $car) }}" class="relative z-20 px-3 py-1.5 rounded bg-gray-800 text-white text-xs">
+                                            Изменить
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
