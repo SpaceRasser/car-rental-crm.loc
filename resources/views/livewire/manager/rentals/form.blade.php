@@ -184,8 +184,51 @@
                     <div>Аренда: <b>{{ number_format((float)$rent_amount, 2, '.', ' ') }} ₽</b></div>
                     <div>Итого к оплате: <b>{{ number_format((float)$total_amount, 2, '.', ' ') }} ₽</b></div>
                     <div>Доп. услуги: <b>{{ number_format((float)$extras_amount, 2, '.', ' ') }} ₽</b></div>
-                    <div class="text-xs text-gray-500 mt-1">Итого = аренда + депозит</div>
+                    <div class="text-xs text-gray-500 mt-1">Итого = аренда + услуги + депозит</div>
                 </div>
+            </div>
+
+            @if(!empty($additionalCarsSummary))
+            <div class="bg-white rounded border p-4 text-sm">
+                <div class="font-semibold mb-2">Стоимость по автомобилям</div>
+                <div class="space-y-2">
+                    @foreach($additionalCarsSummary as $summary)
+                        <div class="flex items-center justify-between">
+                            <div>{{ $summary['label'] }}</div>
+                            <div class="text-xs text-gray-600">
+                                {{ number_format((float) $summary['daily_price'], 2, '.', ' ') }} ₽/день •
+                                депозит {{ number_format((float) $summary['deposit_amount'], 2, '.', ' ') }} ₽
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            <div class="bg-gray-50 rounded p-4 text-sm space-y-3">
+                <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" wire:model.defer="use_trusted_person" class="rounded border-gray-300" />
+                    Доверенное лицо для аренды
+                </label>
+                @if($use_trusted_person)
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="text-xs text-gray-500">ФИО</label>
+                        <input wire:model.defer="trusted_person_name" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_name') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Телефон</label>
+                        <input wire:model.defer="trusted_person_phone" data-mask="phone" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">№ водительского удостоверения</label>
+                        <input wire:model.defer="trusted_person_license_number" data-mask="license" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+                @endif
             </div>
 
             <div class="bg-gray-50 rounded p-4 text-sm space-y-3">

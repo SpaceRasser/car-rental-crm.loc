@@ -37,6 +37,7 @@ class Form extends Component
     public string $total_amount = '0.00';
     public array $selectedExtras = [];
     public string $extras_amount = '0.00';
+    public array $additionalCarsSummary = [];
 
     public bool $overridePricing = false;
 
@@ -63,6 +64,12 @@ class Form extends Component
 
         $this->overridePricing = false;
 
+        $this->recalc();
+    }
+
+    public function updatedAdditionalCarIds(): void
+    {
+        $this->rebuildAdditionalCarsSummary();
         $this->recalc();
     }
 
@@ -138,16 +145,50 @@ class Form extends Component
 
         // базовая аренда
         $rent = $this->days * $daily;
+        $depositTotal = $deposit;
+
+        $this->rebuildAdditionalCarsSummary();
+        foreach ($this->additionalCarsSummary as $summary) {
+            $rent += $this->days * (float) $summary['daily_price'];
+            $depositTotal += (float) $summary['deposit_amount'];
+        }
 
         // доп. услуги (фикс/за день)
         $extrasTotal = $this->calcExtrasTotal($this->days);
 
         // итого к оплате: (аренда + услуги) + депозит
-        $total = $rent + $extrasTotal + $deposit;
+        $total = $rent + $extrasTotal + $depositTotal;
 
         $this->rent_amount   = number_format($rent, 2, '.', '');
         $this->extras_amount = number_format($extrasTotal, 2, '.', '');
         $this->total_amount  = number_format($total, 2, '.', '');
+    }
+
+    private function rebuildAdditionalCarsSummary(): void
+    {
+        if (empty($this->additional_car_ids)) {
+            $this->additionalCarsSummary = [];
+            return;
+        }
+
+        $carIds = array_values(array_unique(array_map('intval', $this->additional_car_ids)));
+        $cars = Car::query()->whereIn('id', $carIds)->get()->keyBy('id');
+
+        $this->additionalCarsSummary = [];
+        foreach ($carIds as $carId) {
+            $car = $cars->get($carId);
+            if (!$car) {
+                continue;
+            }
+            $daily = $this->overridePricing ? (float) $this->daily_price : (float) ($car->daily_price ?? 0);
+            $deposit = $this->overridePricing ? (float) $this->deposit_amount : (float) ($car->deposit_amount ?? 0);
+            $this->additionalCarsSummary[] = [
+                'id' => $car->id,
+                'label' => trim($car->brand.' '.$car->model.' • '.$car->plate_number),
+                'daily_price' => $daily,
+                'deposit_amount' => $deposit,
+            ];
+        }
     }
 
 
@@ -297,6 +338,8 @@ class Form extends Component
     public function updatedOverridePricing(): void
     {
         if ($this->overridePricing) {
+            $this->rebuildAdditionalCarsSummary();
+            $this->recalc();
             return;
         }
 
@@ -308,6 +351,7 @@ class Form extends Component
         $this->daily_price = (string) ($car->daily_price ?? '0.00');
         $this->deposit_amount = (string) ($car->deposit_amount ?? '0.00');
 
+        $this->rebuildAdditionalCarsSummary();
         $this->recalc();
     }
 
