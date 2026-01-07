@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Client\RentalCatalogController;
+use App\Http\Controllers\Client\TestDriveCatalogController;
+use App\Http\Controllers\Manager\CatalogController;
 use App\Models\Client;
 use App\Models\Extra;
 use App\Models\Rental;
@@ -40,6 +43,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
 Route::middleware(['auth', 'role:admin,manager'])->prefix('manager')->name('manager.')->group(function () {
     Route::view('/dashboard', 'dashboards.manager')->name('dashboard');
+    Route::get('/catalog/rentals', [CatalogController::class, 'rentals'])->name('catalog.rentals');
+    Route::get('/catalog/test-drives', [CatalogController::class, 'testDrives'])->name('catalog.test-drives');
     Route::view('/cars', 'manager.cars.index')->name('cars.index');
     Route::view('/cars/create', 'manager.cars.create')->name('cars.create');
     Route::get('/cars/{car}/edit', function (Car $car) {
@@ -68,6 +73,7 @@ Route::middleware(['auth', 'role:admin,manager'])->prefix('manager')->name('mana
     })->name('test-drives.show');
     Route::get('/clients/{client}', function (Client $client) {
         $client->load([
+            'carAssignments' => fn($q) => $q->with('car')->orderByDesc('id'),
             'rentals' => fn($q) => $q
                 ->with(['car', 'payments' => fn($p) => $p->orderByDesc('id')])
                 ->orderByDesc('id')
@@ -87,13 +93,21 @@ Route::middleware(['auth', 'role:admin,manager'])->prefix('manager')->name('mana
 });
 
 Route::middleware(['auth', 'role:client'])->prefix('client')->name('client.')->group(function () {
-    Route::view('/dashboard', 'dashboards.client')->name('dashboard');
+    Route::get('/dashboard', [RentalCatalogController::class, 'index'])->name('dashboard');
+    Route::get('/catalog/rentals', [RentalCatalogController::class, 'index'])->name('catalog.rentals');
+    Route::get('/catalog/rentals/{car}', [RentalCatalogController::class, 'show'])->name('catalog.rentals.show');
+    Route::post('/catalog/rentals/{car}/book', [RentalCatalogController::class, 'book'])->name('catalog.rentals.book');
+
+    Route::get('/catalog/test-drives', [TestDriveCatalogController::class, 'index'])->name('catalog.test-drives');
+    Route::get('/catalog/test-drives/{car}', [TestDriveCatalogController::class, 'show'])->name('catalog.test-drives.show');
+    Route::post('/catalog/test-drives/{car}/book', [TestDriveCatalogController::class, 'book'])->name('catalog.test-drives.book');
 });
 
 // профиль оставляем как есть
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile/client', [ProfileController::class, 'updateClient'])->name('profile.client.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 

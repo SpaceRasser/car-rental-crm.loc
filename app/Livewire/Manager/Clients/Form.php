@@ -3,6 +3,8 @@
 namespace App\Livewire\Manager\Clients;
 
 use App\Models\Client;
+use App\Models\ClientCarAssignment;
+use App\Models\Car;
 use Livewire\Component;
 use Illuminate\Validation\Rule;
 
@@ -25,6 +27,15 @@ class Form extends Component
     public string $reliability_status = 'normal';
     public bool $is_verified = false;
     public ?string $notes = null;
+    public ?string $trusted_person_name = null;
+    public ?string $trusted_person_phone = null;
+    public ?string $trusted_person_license_number = null;
+
+    /** @var array<int, int|string> */
+    public array $client_car_ids = [];
+
+    /** @var array<int, int|string> */
+    public array $trusted_car_ids = [];
 
     public function mount(?int $clientId = null): void
     {
@@ -48,6 +59,23 @@ class Form extends Component
             $this->reliability_status = $this->client->reliability_status;
             $this->is_verified = (bool) $this->client->is_verified;
             $this->notes = $this->client->notes;
+            $this->trusted_person_name = $this->client->trusted_person_name;
+            $this->trusted_person_phone = $this->client->trusted_person_phone;
+            $this->trusted_person_license_number = $this->client->trusted_person_license_number;
+
+            $assignments = $this->client->carAssignments()->get();
+            $this->client_car_ids = $assignments
+                ->where('relation_type', 'client')
+                ->pluck('car_id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+            $this->trusted_car_ids = $assignments
+                ->where('relation_type', 'trusted')
+                ->pluck('car_id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
         }
     }
 
@@ -69,21 +97,34 @@ class Form extends Component
             'reliability_status' => ['required', Rule::in(['normal', 'vip', 'blocked'])],
             'is_verified' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'trusted_person_name' => ['nullable', 'string', 'max:120'],
+            'trusted_person_phone' => ['nullable', 'string', 'max:30'],
+            'trusted_person_license_number' => ['nullable', 'string', 'max:50'],
+            'client_car_ids' => ['array'],
+            'client_car_ids.*' => ['integer', Rule::exists('cars', 'id')],
+            'trusted_car_ids' => ['array'],
+            'trusted_car_ids.*' => ['integer', Rule::exists('cars', 'id')],
         ];
     }
 
     public function save()
     {
         $data = $this->validate();
+        $clientCarIds = array_values(array_unique(array_map('intval', $data['client_car_ids'] ?? [])));
+        $trustedCarIds = array_values(array_unique(array_map('intval', $data['trusted_car_ids'] ?? [])));
+
+        unset($data['client_car_ids'], $data['trusted_car_ids']);
 
         if ($this->client) {
             $this->client->update($data);
+            $this->syncCars($this->client, $clientCarIds, $trustedCarIds);
             session()->flash('success', 'Клиент обновлён.');
             return redirect()->route('manager.clients.show', $this->client);
         }
 
         $data['created_by'] = auth()->id();
         $client = Client::create($data);
+        $this->syncCars($client, $clientCarIds, $trustedCarIds);
 
         session()->flash('success', 'Клиент создан.');
         return redirect()->route('manager.clients.show', $client);
@@ -97,6 +138,33 @@ class Form extends Component
             'blocked' => 'Заблокирован',
         ];
 
-        return view('livewire.manager.clients.form', compact('statuses'));
+        $cars = Car::query()
+            ->where('is_active', true)
+            ->orderBy('brand')
+            ->orderBy('model')
+            ->get();
+
+        return view('livewire.manager.clients.form', compact('statuses', 'cars'));
+    }
+
+    private function syncCars(Client $client, array $clientCarIds, array $trustedCarIds): void
+    {
+        $client->carAssignments()->delete();
+
+        foreach ($clientCarIds as $carId) {
+            ClientCarAssignment::create([
+                'client_id' => $client->id,
+                'car_id' => $carId,
+                'relation_type' => 'client',
+            ]);
+        }
+
+        foreach ($trustedCarIds as $carId) {
+            ClientCarAssignment::create([
+                'client_id' => $client->id,
+                'car_id' => $carId,
+                'relation_type' => 'trusted',
+            ]);
+        }
     }
 }

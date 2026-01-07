@@ -1,4 +1,4 @@
-<nav x-data="{ open: false, adminOpen: false }" class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+<nav x-data="{ open: false, adminOpen: false, dashboardOpen: false }" class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
 <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -12,9 +12,50 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex sm:items-center">
-                <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        Дашборд
-                    </x-nav-link>
+                    @if(auth()->user()->role === 'client')
+                        <x-nav-link :href="route('client.dashboard')" :active="request()->routeIs('client.dashboard') || request()->routeIs('client.catalog.rentals*')">
+                            Каталог для аренды
+                        </x-nav-link>
+                        <x-nav-link :href="route('client.catalog.test-drives')" :active="request()->routeIs('client.catalog.test-drives*')">
+                            Каталог для тест-драйва
+                        </x-nav-link>
+                    @else
+                        @php
+                        $dashboardActive = request()->routeIs('dashboard')
+                            || request()->routeIs('manager.catalog.*');
+
+                        $dashboardTriggerClasses = $dashboardActive
+                            ? 'inline-flex items-center px-1 pt-1 border-b-2 border-indigo-400 dark:border-indigo-600 text-sm font-medium leading-5 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-700 transition duration-150 ease-in-out'
+                            : 'inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700 focus:outline-none focus:text-gray-700 dark:focus:text-gray-300 focus:border-gray-300 dark:focus:border-gray-700 transition duration-150 ease-in-out';
+                        @endphp
+
+                        <div class="relative" x-data="{ open: false }" @click.away="open = false">
+                            <button type="button"
+                                    @click="open = !open"
+                                    class="{{ $dashboardTriggerClasses }}">
+                                <span>Дашборд</span>
+
+                                <svg class="ms-1 h-4 w-4 fill-current transition"
+                                     :class="open ? 'rotate-180' : ''"
+                                     xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+
+                            <div x-show="open"
+                                 x-transition
+                                 style="display:none"
+                                 class="absolute left-0 mt-2 w-56 rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black/5 z-50">
+                                <div class="py-1">
+                                    <x-dropdown-link :href="route('dashboard')">Дашборд</x-dropdown-link>
+                                    @if(in_array(auth()->user()->role, ['admin','manager'], true))
+                                    <x-dropdown-link :href="route('manager.catalog.rentals')">Каталог аренды</x-dropdown-link>
+                                    <x-dropdown-link :href="route('manager.catalog.test-drives')">Каталог тест-драйва</x-dropdown-link>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @endif
 
                     @if(in_array(auth()->user()->role, ['admin','manager'], true))
                     <x-nav-link :href="route('manager.cars.index')" :active="request()->routeIs('manager.cars.*')">
@@ -141,9 +182,40 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                Дашборд
-            </x-responsive-nav-link>
+            @if(auth()->user()->role === 'client')
+                <x-responsive-nav-link :href="route('client.dashboard')" :active="request()->routeIs('client.dashboard') || request()->routeIs('client.catalog.rentals*')">
+                    Каталог для аренды
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('client.catalog.test-drives')" :active="request()->routeIs('client.catalog.test-drives*')">
+                    Каталог для тест-драйва
+                </x-responsive-nav-link>
+            @else
+            <div class="pt-1">
+                <button type="button"
+                        @click="dashboardOpen = !dashboardOpen"
+                        class="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <span>Дашборд</span>
+                    <svg class="h-4 w-4 fill-current transition" :class="dashboardOpen ? 'rotate-180' : ''"
+                         xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+
+                <div x-show="dashboardOpen" x-collapse class="pl-2 border-l border-gray-200 ml-4 space-y-1">
+                    <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                        Дашборд
+                    </x-responsive-nav-link>
+                    @if(in_array(auth()->user()->role, ['admin','manager'], true))
+                    <x-responsive-nav-link :href="route('manager.catalog.rentals')" :active="request()->routeIs('manager.catalog.rentals')">
+                        Каталог аренды
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('manager.catalog.test-drives')" :active="request()->routeIs('manager.catalog.test-drives')">
+                        Каталог тест-драйва
+                    </x-responsive-nav-link>
+                    @endif
+                </div>
+            </div>
+            @endif
 
             @if(in_array(auth()->user()->role, ['admin','manager'], true))
             <x-responsive-nav-link :href="route('manager.cars.index')" :active="request()->routeIs('manager.cars.*')">
