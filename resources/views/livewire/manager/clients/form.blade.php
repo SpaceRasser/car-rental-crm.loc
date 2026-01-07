@@ -35,19 +35,19 @@
 
                 <div>
                     <label class="text-sm text-gray-600">Телефон</label>
-                    <input wire:model.defer="phone" class="mt-1 w-full rounded border-gray-300" />
+                    <input wire:model.defer="phone" data-mask="phone" class="mt-1 w-full rounded border-gray-300" />
                     @error('phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                 </div>
 
                 <div>
                     <label class="text-sm text-gray-600">Email</label>
-                    <input wire:model.defer="email" class="mt-1 w-full rounded border-gray-300" />
+                    <input wire:model.defer="email" data-mask="email" class="mt-1 w-full rounded border-gray-300" />
                     @error('email') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                 </div>
 
                 <div>
                     <label class="text-sm text-gray-600">№ водительского удостоверения</label>
-                    <input wire:model.defer="driver_license_number" class="mt-1 w-full rounded border-gray-300" />
+                    <input wire:model.defer="driver_license_number" data-mask="license" class="mt-1 w-full rounded border-gray-300" />
                     @error('driver_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                 </div>
 
@@ -90,12 +90,12 @@
                     </div>
                     <div>
                         <label class="text-sm text-gray-600">Телефон</label>
-                        <input wire:model.defer="trusted_person_phone" class="mt-1 w-full rounded border-gray-300" />
+                        <input wire:model.defer="trusted_person_phone" data-mask="phone" class="mt-1 w-full rounded border-gray-300" />
                         @error('trusted_person_phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                     </div>
                     <div>
                         <label class="text-sm text-gray-600">№ водительского удостоверения</label>
-                        <input wire:model.defer="trusted_person_license_number" class="mt-1 w-full rounded border-gray-300" />
+                        <input wire:model.defer="trusted_person_license_number" data-mask="license" class="mt-1 w-full rounded border-gray-300" />
                         @error('trusted_person_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                     </div>
                 </div>

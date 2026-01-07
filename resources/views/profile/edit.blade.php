@@ -63,19 +63,19 @@
 
                         <div>
                             <label class="text-xs text-gray-500">Телефон *</label>
-                            <input type="text" name="phone" value="{{ old('phone', $client->phone ?? '') }}" class="mt-1 w-full rounded border-gray-300" />
+                            <input type="text" name="phone" data-mask="phone" value="{{ old('phone', $client->phone ?? '') }}" class="mt-1 w-full rounded border-gray-300" />
                             @error('phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                         </div>
 
                         <div>
                             <label class="text-xs text-gray-500">Email *</label>
-                            <input type="email" name="email" value="{{ old('email', $client->email ?? auth()->user()->email) }}" class="mt-1 w-full rounded border-gray-300" />
+                            <input type="email" name="email" data-mask="email" value="{{ old('email', $client->email ?? auth()->user()->email) }}" class="mt-1 w-full rounded border-gray-300" />
                             @error('email') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                         </div>
 
                         <div>
                             <label class="text-xs text-gray-500">№ водительского удостоверения *</label>
-                            <input type="text" name="driver_license_number" value="{{ old('driver_license_number', $client->driver_license_number ?? '') }}" class="mt-1 w-full rounded border-gray-300" />
+                            <input type="text" name="driver_license_number" data-mask="license" value="{{ old('driver_license_number', $client->driver_license_number ?? '') }}" class="mt-1 w-full rounded border-gray-300" />
                             @error('driver_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                         </div>
 
@@ -103,13 +103,13 @@
 
                         <div>
                             <label class="text-xs text-gray-500">Телефон</label>
-                            <input type="text" name="trusted_person_phone" value="{{ old('trusted_person_phone', $client->trusted_person_phone ?? '') }}" class="mt-1 w-full rounded border-gray-300" />
+                            <input type="text" name="trusted_person_phone" data-mask="phone" value="{{ old('trusted_person_phone', $client->trusted_person_phone ?? '') }}" class="mt-1 w-full rounded border-gray-300" />
                             @error('trusted_person_phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                         </div>
 
                         <div>
                             <label class="text-xs text-gray-500">№ водительского удостоверения</label>
-                            <input type="text" name="trusted_person_license_number" value="{{ old('trusted_person_license_number', $client->trusted_person_license_number ?? '') }}" class="mt-1 w-full rounded border-gray-300" />
+                            <input type="text" name="trusted_person_license_number" data-mask="license" value="{{ old('trusted_person_license_number', $client->trusted_person_license_number ?? '') }}" class="mt-1 w-full rounded border-gray-300" />
                             @error('trusted_person_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                         </div>
 
