@@ -65,7 +65,13 @@
 
                 <div>
                     <label class="text-sm text-gray-600">Статус *</label>
-                    <select wire:model.defer="status" class="mt-1 w-full rounded border-gray-300">
+                    <input
+                        type="text"
+                        placeholder="Поиск статуса..."
+                        data-select-target="car-status-select"
+                        class="mt-1 w-full rounded border-gray-300 text-sm"
+                    />
+                    <select id="car-status-select" wire:model.defer="status" class="mt-2 w-full rounded border-gray-300">
                         @foreach($statuses as $k => $label)
                         <option value="{{ $k }}">{{ $label }}</option>
                         @endforeach
