@@ -31,12 +31,6 @@ class Form extends Component
     public ?string $trusted_person_phone = null;
     public ?string $trusted_person_license_number = null;
 
-    /** @var array<int, int|string> */
-    public array $client_car_ids = [];
-
-    /** @var array<int, int|string> */
-    public array $trusted_car_ids = [];
-
     public function mount(?int $clientId = null): void
     {
         $this->clientId = $clientId;
@@ -63,19 +57,6 @@ class Form extends Component
             $this->trusted_person_phone = $this->client->trusted_person_phone;
             $this->trusted_person_license_number = $this->client->trusted_person_license_number;
 
-            $assignments = $this->client->carAssignments()->get();
-            $this->client_car_ids = $assignments
-                ->where('relation_type', 'client')
-                ->pluck('car_id')
-                ->map(fn ($id) => (int) $id)
-                ->values()
-                ->all();
-            $this->trusted_car_ids = $assignments
-                ->where('relation_type', 'trusted')
-                ->pluck('car_id')
-                ->map(fn ($id) => (int) $id)
-                ->values()
-                ->all();
         }
     }
 
@@ -100,10 +81,6 @@ class Form extends Component
             'trusted_person_name' => ['nullable', 'string', 'max:120'],
             'trusted_person_phone' => ['nullable', 'string', 'max:30'],
             'trusted_person_license_number' => ['nullable', 'string', 'max:50'],
-            'client_car_ids' => ['array'],
-            'client_car_ids.*' => ['integer', Rule::exists('cars', 'id')],
-            'trusted_car_ids' => ['array'],
-            'trusted_car_ids.*' => ['integer', Rule::exists('cars', 'id')],
         ];
     }
 

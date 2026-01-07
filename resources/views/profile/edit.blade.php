@@ -135,6 +135,102 @@
 
             <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
                 <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Платежи</h3>
+                </div>
+
+                @if($client)
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-600 dark:bg-gray-900/40 dark:text-gray-400">
+                            <tr>
+                                <th class="text-left px-4 py-3">ID</th>
+                                <th class="text-left px-4 py-3">Аренда</th>
+                                <th class="text-left px-4 py-3">Сумма</th>
+                                <th class="text-left px-4 py-3">Статус</th>
+                                <th class="text-left px-4 py-3">Дата</th>
+                                <th class="text-left px-4 py-3">Действия</th>
+                            </tr>
+                            </thead>
+                            <tbody class="divide-y">
+                            @forelse($payments as $payment)
+                                <tr>
+                                    <td class="px-4 py-3 font-mono text-xs">#{{ $payment->id }}</td>
+                                    <td class="px-4 py-3">
+                                        <div class="font-medium">Аренда #{{ $payment->rental_id }}</div>
+                                        <div class="text-xs text-gray-500">
+                                            {{ $payment->rental?->car?->brand }} {{ $payment->rental?->car?->model }}
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">{{ number_format((float)$payment->amount, 2, '.', ' ') }} ₽</td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-1 rounded text-xs border">{{ $payment->status }}</span>
+                                    </td>
+                                    <td class="px-4 py-3">{{ optional($payment->paid_at ?? $payment->created_at)->format('d.m.Y H:i') ?? '—' }}</td>
+                                    <td class="px-4 py-3">
+                                        @php
+                                            $rental = $payment->rental;
+                                            $paid = $rental?->payments?->where('status', 'paid')->sum('amount') ?? 0;
+                                            $total = (float)(($rental?->grand_total ?? 0) + ($rental?->deposit_amount ?? 0));
+                                            $remaining = max(0, $total - (float)$paid);
+                                        @endphp
+                                        @if($remaining > 0 && $rental)
+                                            <form method="post" action="{{ route('client.rentals.pay', $rental) }}">
+                                                @csrf
+                                                <button type="submit" class="px-3 py-1.5 rounded bg-gray-800 text-white text-xs">
+                                                    Оплатить {{ number_format((float)$remaining, 2, '.', ' ') }} ₽
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="text-xs text-gray-500">Оплачено</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="px-4 py-6 text-center text-gray-500">
+                                        Платежей пока нет
+                                    </td>
+                                </tr>
+                            @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-6">
+                        <div class="text-sm font-semibold text-gray-700 mb-2">Счета к оплате</div>
+                        <div class="space-y-2">
+                            @foreach($rentals as $rental)
+                                @php
+                                    $paid = $rental->payments?->where('status', 'paid')->sum('amount') ?? 0;
+                                    $total = (float)(($rental->grand_total ?? 0) + ($rental->deposit_amount ?? 0));
+                                    $remaining = max(0, $total - (float)$paid);
+                                @endphp
+                                @if($remaining > 0)
+                                    <div class="flex items-center justify-between border rounded p-3 text-sm">
+                                        <div>
+                                            <div class="font-medium">Аренда #{{ $rental->id }}</div>
+                                            <div class="text-xs text-gray-500">
+                                                {{ $rental->car?->brand }} {{ $rental->car?->model }} • {{ number_format((float)$remaining, 2, '.', ' ') }} ₽
+                                            </div>
+                                        </div>
+                                        <form method="post" action="{{ route('client.rentals.pay', $rental) }}">
+                                            @csrf
+                                            <button type="submit" class="px-3 py-1.5 rounded bg-gray-800 text-white text-xs">
+                                                Оплатить
+                                            </button>
+                                        </form>
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    </div>
+                @else
+                    <div class="text-sm text-gray-500">Связанный профиль клиента не найден.</div>
+                @endif
+            </div>
+
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+                <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">История аренд</h3>
                     @if(!$client)
                         <span class="text-xs text-gray-500">Профиль клиента не найден</span>

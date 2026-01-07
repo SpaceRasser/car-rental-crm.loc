@@ -101,50 +101,6 @@
                 </div>
             </div>
 
-            <div class="border-t pt-4">
-                <div class="text-sm font-semibold text-gray-700">Автомобили клиента</div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                    <div>
-                        <label class="text-sm text-gray-600">Основной список</label>
-                        <input
-                            type="text"
-                            placeholder="Поиск автомобиля..."
-                            data-select-target="client-cars-select"
-                            class="mt-1 w-full rounded border-gray-300 text-sm"
-                        />
-                        <select id="client-cars-select" wire:model.defer="client_car_ids" multiple class="mt-2 w-full rounded border-gray-300 h-40">
-                            @foreach($cars as $car)
-                            <option value="{{ $car->id }}">
-                                {{ $car->brand }} {{ $car->model }} • {{ $car->plate_number }}
-                            </option>
-                            @endforeach
-                        </select>
-                        <div class="text-xs text-gray-500 mt-1">Используйте Ctrl/Cmd для выбора нескольких.</div>
-                        @error('client_car_ids') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                        @error('client_car_ids.*') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
-                    <div>
-                        <label class="text-sm text-gray-600">Авто доверенного лица</label>
-                        <input
-                            type="text"
-                            placeholder="Поиск автомобиля..."
-                            data-select-target="trusted-cars-select"
-                            class="mt-1 w-full rounded border-gray-300 text-sm"
-                        />
-                        <select id="trusted-cars-select" wire:model.defer="trusted_car_ids" multiple class="mt-2 w-full rounded border-gray-300 h-40">
-                            @foreach($cars as $car)
-                            <option value="{{ $car->id }}">
-                                {{ $car->brand }} {{ $car->model }} • {{ $car->plate_number }}
-                            </option>
-                            @endforeach
-                        </select>
-                        <div class="text-xs text-gray-500 mt-1">Используйте Ctrl/Cmd для выбора нескольких.</div>
-                        @error('trusted_car_ids') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                        @error('trusted_car_ids.*') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
-                </div>
-            </div>
-
             <div>
                 <label class="text-sm text-gray-600">Заметки</label>
                 <textarea wire:model.defer="notes" rows="4" class="mt-1 w-full rounded border-gray-300"></textarea>

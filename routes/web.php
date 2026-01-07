@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Client\RentalCatalogController;
 use App\Http\Controllers\Client\TestDriveCatalogController;
+use App\Http\Controllers\Client\PaymentsController;
 use App\Http\Controllers\Manager\CatalogController;
 use App\Models\Client;
 use App\Models\Extra;
@@ -101,6 +102,8 @@ Route::middleware(['auth', 'role:client'])->prefix('client')->name('client.')->g
     Route::get('/catalog/test-drives', [TestDriveCatalogController::class, 'index'])->name('catalog.test-drives');
     Route::get('/catalog/test-drives/{car}', [TestDriveCatalogController::class, 'show'])->name('catalog.test-drives.show');
     Route::post('/catalog/test-drives/{car}/book', [TestDriveCatalogController::class, 'book'])->name('catalog.test-drives.book');
+
+    Route::post('/rentals/{rental}/pay', [PaymentsController::class, 'payRental'])->name('rentals.pay');
 });
 
 // профиль оставляем как есть

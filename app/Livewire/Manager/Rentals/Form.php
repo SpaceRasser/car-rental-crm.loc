@@ -9,17 +9,23 @@ use Carbon\Carbon;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use App\Models\Extra;
+use Illuminate\Support\Str;
 
 class Form extends Component
 {
     public ?int $client_id = null;
     public ?int $car_id = null;
+    public array $additional_car_ids = [];
 
     public string $starts_at = '';
     public string $ends_at = '';
 
     public string $status = 'new';
     public ?string $notes = null;
+    public bool $use_trusted_person = false;
+    public ?string $trusted_person_name = null;
+    public ?string $trusted_person_phone = null;
+    public ?string $trusted_person_license_number = null;
 
     // цены (подставляем из авто)
     public string $daily_price = '0.00';
@@ -76,6 +82,8 @@ class Form extends Component
         return [
             'client_id' => ['required', 'integer', Rule::exists('clients', 'id')],
             'car_id' => ['required', 'integer', Rule::exists('cars', 'id')],
+            'additional_car_ids' => ['array'],
+            'additional_car_ids.*' => ['integer', Rule::exists('cars', 'id')],
 
             'starts_at' => ['required', 'date'],
             'ends_at' => ['required', 'date', 'after:starts_at'],
@@ -85,6 +93,10 @@ class Form extends Component
 
             'status' => ['required', Rule::in(['new', 'confirmed', 'active', 'closed', 'cancelled', 'overdue'])],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'use_trusted_person' => ['boolean'],
+            'trusted_person_name' => ['nullable', 'string', 'max:120'],
+            'trusted_person_phone' => ['nullable', 'string', 'max:30'],
+            'trusted_person_license_number' => ['nullable', 'string', 'max:50'],
         ];
     }
 
@@ -154,12 +166,17 @@ class Form extends Component
     {
         $data = $this->validate();
 
-        $car = Car::findOrFail((int) $data['car_id']);
+        $primaryCar = Car::findOrFail((int) $data['car_id']);
+        $additionalCarIds = array_values(array_unique(array_map('intval', $data['additional_car_ids'] ?? [])));
+        $carIds = array_values(array_unique(array_merge([(int) $data['car_id']], $additionalCarIds)));
 
         // базовая защита
-        if (isset($car->is_active) && !$car->is_active) {
-            $this->addError('car_id', 'Автомобиль неактивен.');
-            return;
+        foreach ($carIds as $carId) {
+            $car = Car::find($carId);
+            if (!$car || (isset($car->is_active) && !$car->is_active)) {
+                $this->addError('car_id', 'Один из выбранных автомобилей неактивен.');
+                return;
+            }
         }
 
         $from = Carbon::parse($data['starts_at']);
@@ -170,20 +187,22 @@ class Form extends Component
             return;
         }
 
-        if ($this->hasOverlap((int) $data['car_id'], $from, $to)) {
-            $this->addError('starts_at', 'На этот период уже есть аренда/бронь для выбранного авто.');
-            $this->addError('ends_at', 'Выбери другой период или другой автомобиль.');
-            return;
+        foreach ($carIds as $carId) {
+            if ($this->hasOverlap($carId, $from, $to)) {
+                $this->addError('starts_at', 'На этот период уже есть аренда/бронь для выбранного авто.');
+                $this->addError('ends_at', 'Выбери другой период или другой автомобиль.');
+                return;
+            }
         }
 
         // ✅ цены: либо из авто, либо ручные (если разрешили)
         $daily = $this->overridePricing
             ? (float) ($data['daily_price'] ?? 0)
-            : (float) ($car->daily_price ?? 0);
+            : (float) ($primaryCar->daily_price ?? 0);
 
         $deposit = $this->overridePricing
             ? (float) ($data['deposit_amount'] ?? 0)
-            : (float) ($car->deposit_amount ?? 0);
+            : (float) ($primaryCar->deposit_amount ?? 0);
 
         if ($daily <= 0) {
             $this->addError('daily_price', 'Не задана цена аренды за день.');
@@ -200,27 +219,49 @@ class Form extends Component
         $grandTotal  = round($rentTotal + $extrasTotal, 2);
 
         // создаём аренду
-        $rental = Rental::create([
-            'client_id'  => (int) $data['client_id'],
-            'car_id'     => (int) $data['car_id'],
-            'manager_id' => auth()->id(),
+        $groupUuid = (string) Str::uuid();
+        $primaryRental = null;
 
-            'starts_at' => $from,
-            'ends_at'   => $to,
+        foreach ($carIds as $index => $carId) {
+            $car = Car::findOrFail($carId);
+            $carDaily = $this->overridePricing ? $daily : (float) ($car->daily_price ?? 0);
+            $carDeposit = $this->overridePricing ? $deposit : (float) ($car->deposit_amount ?? 0);
 
-            'status' => $data['status'],
-            'notes'  => $data['notes'] ?? null,
+            $carRentTotal = round($days * $carDaily, 2);
+            $carExtrasTotal = $index === 0 ? $extrasTotal : 0;
+            $carGrandTotal = round($carRentTotal + $carExtrasTotal, 2);
 
-            'daily_price'    => $daily,
-            'deposit_amount' => round($deposit, 2),
+            $rental = Rental::create([
+                'client_id'  => (int) $data['client_id'],
+                'car_id'     => $carId,
+                'manager_id' => auth()->id(),
 
-            // ✅ твои расчетные поля:
-            'days_count'     => $days,
-            'base_total'     => $rentTotal,
-            'discount_total' => 0,
-            'penalty_total'  => 0,
-            'grand_total'    => $grandTotal,
-        ]);
+                'starts_at' => $from,
+                'ends_at'   => $to,
+
+                'status' => $data['status'],
+                'notes'  => $data['notes'] ?? null,
+
+                'group_uuid' => $groupUuid,
+                'is_trusted_person' => $this->use_trusted_person,
+                'trusted_person_name' => $this->use_trusted_person ? $this->trusted_person_name : null,
+                'trusted_person_phone' => $this->use_trusted_person ? $this->trusted_person_phone : null,
+                'trusted_person_license_number' => $this->use_trusted_person ? $this->trusted_person_license_number : null,
+
+                'daily_price'    => $carDaily,
+                'deposit_amount' => round($carDeposit, 2),
+
+                'days_count'     => $days,
+                'base_total'     => $carRentTotal,
+                'discount_total' => 0,
+                'penalty_total'  => 0,
+                'grand_total'    => $carGrandTotal,
+            ]);
+
+            if ($index === 0) {
+                $primaryRental = $rental;
+            }
+        }
 
         $sync = [];
 
@@ -243,14 +284,14 @@ class Form extends Component
             }
         }
 
-        if (!empty($sync)) {
-            $rental->extras()->sync($sync);
+        if (!empty($sync) && $primaryRental) {
+            $primaryRental->extras()->sync($sync);
         }
 
 
 
         session()->flash('success', 'Аренда создана.');
-        return redirect()->route('manager.rentals.show', $rental);
+        return redirect()->route('manager.rentals.show', $primaryRental);
     }
 
     public function updatedOverridePricing(): void

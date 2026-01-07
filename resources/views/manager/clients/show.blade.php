@@ -44,40 +44,12 @@
             </div>
 
             <div class="bg-white rounded shadow p-5">
-                <div class="font-semibold mb-3">Доверенное лицо и автомобили</div>
+                <div class="font-semibold mb-3">Доверенное лицо</div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
-                        <div class="text-xs text-gray-500 mb-1">Доверенное лицо</div>
                         <div><span class="text-gray-500">ФИО:</span> {{ $client->trusted_person_name ?? '—' }}</div>
                         <div><span class="text-gray-500">Телефон:</span> {{ $client->trusted_person_phone ?? '—' }}</div>
                         <div><span class="text-gray-500">В/У:</span> {{ $client->trusted_person_license_number ?? '—' }}</div>
-                    </div>
-                    <div>
-                        @php
-                            $clientCars = $client->carAssignments->where('relation_type', 'client');
-                            $trustedCars = $client->carAssignments->where('relation_type', 'trusted');
-                        @endphp
-                        <div class="text-xs text-gray-500 mb-1">Автомобили клиента</div>
-                        @if($clientCars->isEmpty())
-                            <div class="text-gray-500">Не указаны</div>
-                        @else
-                            <ul class="list-disc list-inside space-y-1">
-                                @foreach($clientCars as $assignment)
-                                    <li>{{ $assignment->car?->brand }} {{ $assignment->car?->model }} • {{ $assignment->car?->plate_number ?? '—' }}</li>
-                                @endforeach
-                            </ul>
-                        @endif
-
-                        <div class="text-xs text-gray-500 mt-3 mb-1">Авто доверенного лица</div>
-                        @if($trustedCars->isEmpty())
-                            <div class="text-gray-500">Не указаны</div>
-                        @else
-                            <ul class="list-disc list-inside space-y-1">
-                                @foreach($trustedCars as $assignment)
-                                    <li>{{ $assignment->car?->brand }} {{ $assignment->car?->model }} • {{ $assignment->car?->plate_number ?? '—' }}</li>
-                                @endforeach
-                            </ul>
-                        @endif
                     </div>
                 </div>
             </div>

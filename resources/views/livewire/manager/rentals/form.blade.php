@@ -51,6 +51,26 @@
                 </div>
 
                 <div>
+                    <label class="text-sm text-gray-600">Доп. автомобили</label>
+                    <input
+                        type="text"
+                        placeholder="Поиск автомобиля..."
+                        data-select-target="rental-additional-cars-select"
+                        class="mt-1 w-full rounded border-gray-300 text-sm"
+                    />
+                    <select id="rental-additional-cars-select" wire:model.defer="additional_car_ids" multiple class="mt-2 w-full rounded border-gray-300 h-32">
+                        @foreach($cars as $car)
+                        <option value="{{ $car->id }}">
+                            {{ $car->brand }} {{ $car->model }} • {{ $car->plate_number }}
+                        </option>
+                        @endforeach
+                    </select>
+                    <div class="text-xs text-gray-500 mt-1">Используйте Ctrl/Cmd для выбора нескольких.</div>
+                    @error('additional_car_ids') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    @error('additional_car_ids.*') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                </div>
+
+                <div>
                     <label class="text-sm text-gray-600">Начало *</label>
                     <input type="datetime-local" wire:model.live="starts_at" class="mt-1 w-full rounded border-gray-300" />
                     @error('starts_at') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
@@ -166,6 +186,32 @@
                     <div>Доп. услуги: <b>{{ number_format((float)$extras_amount, 2, '.', ' ') }} ₽</b></div>
                     <div class="text-xs text-gray-500 mt-1">Итого = аренда + депозит</div>
                 </div>
+            </div>
+
+            <div class="bg-gray-50 rounded p-4 text-sm space-y-3">
+                <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" wire:model.defer="use_trusted_person" class="rounded border-gray-300" />
+                    Доверенное лицо для аренды
+                </label>
+                @if($use_trusted_person)
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="text-xs text-gray-500">ФИО</label>
+                        <input wire:model.defer="trusted_person_name" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_name') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Телефон</label>
+                        <input wire:model.defer="trusted_person_phone" data-mask="phone" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">№ водительского удостоверения</label>
+                        <input wire:model.defer="trusted_person_license_number" data-mask="license" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+                @endif
             </div>
 
             <div>

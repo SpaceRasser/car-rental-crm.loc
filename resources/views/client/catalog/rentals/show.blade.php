@@ -89,6 +89,42 @@
                         @error('notes') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                     </div>
                     <div class="md:col-span-2">
+                        <label class="text-xs text-gray-500">Дополнительные автомобили</label>
+                        <select name="additional_car_ids[]" multiple class="mt-1 w-full rounded border-gray-300 h-32">
+                            @foreach(($additionalCars ?? []) as $extraCar)
+                                <option value="{{ $extraCar->id }}" @selected(collect(old('additional_car_ids'))->contains($extraCar->id))>
+                                    {{ $extraCar->brand }} {{ $extraCar->model }} • {{ $extraCar->plate_number }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="text-xs text-gray-500 mt-1">Используйте Ctrl/Cmd для выбора нескольких.</div>
+                        @error('additional_car_ids') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                        @error('additional_car_ids.*') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="md:col-span-2 bg-gray-50 rounded p-3">
+                        <label class="inline-flex items-center gap-2 text-sm">
+                            <input type="checkbox" name="use_trusted_person" value="1" @checked(old('use_trusted_person')) class="rounded border-gray-300" />
+                            Доверенное лицо
+                        </label>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                            <div>
+                                <label class="text-xs text-gray-500">ФИО</label>
+                                <input type="text" name="trusted_person_name" value="{{ old('trusted_person_name') }}" class="mt-1 w-full rounded border-gray-300" />
+                                @error('trusted_person_name') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">Телефон</label>
+                                <input type="text" name="trusted_person_phone" data-mask="phone" value="{{ old('trusted_person_phone') }}" class="mt-1 w-full rounded border-gray-300" />
+                                @error('trusted_person_phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">№ водительского удостоверения</label>
+                                <input type="text" name="trusted_person_license_number" data-mask="license" value="{{ old('trusted_person_license_number') }}" class="mt-1 w-full rounded border-gray-300" />
+                                @error('trusted_person_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2">
                         <button type="submit" class="px-4 py-2 rounded bg-gray-800 text-white text-sm">Отправить заявку</button>
                     </div>
                 </form>

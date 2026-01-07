@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\Payment;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,10 +22,11 @@ class ProfileController extends Controller
         $client = Client::query()->where('user_id', $user->id)->first();
         $rentals = collect();
         $testDrives = collect();
+        $payments = collect();
 
         if ($client) {
             $rentals = $client->rentals()
-                ->with('car')
+                ->with(['car', 'payments'])
                 ->latest('starts_at')
                 ->limit(10)
                 ->get();
@@ -34,6 +36,13 @@ class ProfileController extends Controller
                 ->latest('scheduled_at')
                 ->limit(10)
                 ->get();
+
+            $payments = Payment::query()
+                ->with(['rental.car'])
+                ->whereHas('rental', fn ($q) => $q->where('client_id', $client->id))
+                ->latest('id')
+                ->limit(20)
+                ->get();
         }
 
         return view('profile.edit', [
@@ -41,6 +50,7 @@ class ProfileController extends Controller
             'client' => $client,
             'rentals' => $rentals,
             'testDrives' => $testDrives,
+            'payments' => $payments,
         ]);
     }
 

@@ -81,9 +81,18 @@ class RentalCatalogController extends Controller
     {
         $this->ensureCarAvailable($car);
         $car->load(['photos', 'mainPhoto']);
+        $additionalCars = Car::query()
+            ->where('is_active', true)
+            ->where('status', 'available')
+            ->where('id', '!=', $car->id)
+            ->orderBy('brand')
+            ->orderBy('model')
+            ->limit(50)
+            ->get();
 
         return view('client.catalog.rentals.show', [
             'car' => $car,
+            'additionalCars' => $additionalCars,
         ]);
     }
 
@@ -107,19 +116,44 @@ class RentalCatalogController extends Controller
             'starts_at' => ['required', 'date'],
             'ends_at' => ['required', 'date', 'after:starts_at'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'additional_car_ids' => ['array'],
+            'additional_car_ids.*' => ['integer'],
+            'use_trusted_person' => ['nullable', 'boolean'],
+            'trusted_person_name' => ['nullable', 'string', 'max:120'],
+            'trusted_person_phone' => ['nullable', 'string', 'max:30'],
+            'trusted_person_license_number' => ['nullable', 'string', 'max:50'],
         ]);
 
-        Rental::create([
-            'car_id' => $car->id,
-            'client_id' => $client->id,
-            'status' => 'new',
-            'starts_at' => $data['starts_at'],
-            'ends_at' => $data['ends_at'],
-            'daily_price' => $car->daily_price,
-            'deposit_amount' => $car->deposit_amount ?? 0,
-            'notes' => $data['notes'] ?? null,
-            'purpose' => 'Запрос из клиентского каталога',
-        ]);
+        $carIds = array_values(array_unique(array_merge(
+            [$car->id],
+            array_map('intval', $data['additional_car_ids'] ?? [])
+        )));
+
+        $groupUuid = (string) \Illuminate\Support\Str::uuid();
+
+        foreach ($carIds as $carId) {
+            $currentCar = Car::findOrFail($carId);
+            if (!$currentCar->is_active || $currentCar->status !== 'available') {
+                return redirect()->route('client.catalog.rentals.show', $car)
+                    ->with('booking_error', 'Один из выбранных автомобилей недоступен.');
+            }
+            Rental::create([
+                'car_id' => $currentCar->id,
+                'client_id' => $client->id,
+                'status' => 'new',
+                'starts_at' => $data['starts_at'],
+                'ends_at' => $data['ends_at'],
+                'daily_price' => $currentCar->daily_price,
+                'deposit_amount' => $currentCar->deposit_amount ?? 0,
+                'notes' => $data['notes'] ?? null,
+                'purpose' => 'Запрос из клиентского каталога',
+                'group_uuid' => $groupUuid,
+                'is_trusted_person' => (bool) ($data['use_trusted_person'] ?? false),
+                'trusted_person_name' => $data['use_trusted_person'] ? ($data['trusted_person_name'] ?? null) : null,
+                'trusted_person_phone' => $data['use_trusted_person'] ? ($data['trusted_person_phone'] ?? null) : null,
+                'trusted_person_license_number' => $data['use_trusted_person'] ? ($data['trusted_person_license_number'] ?? null) : null,
+            ]);
+        }
 
         return redirect()
             ->route('client.catalog.rentals.show', $car)
