@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Client\RentalCatalogController;
+use App\Http\Controllers\Client\TestDriveCatalogController;
 use App\Models\Client;
 use App\Models\Extra;
 use App\Models\Rental;
@@ -87,7 +89,14 @@ Route::middleware(['auth', 'role:admin,manager'])->prefix('manager')->name('mana
 });
 
 Route::middleware(['auth', 'role:client'])->prefix('client')->name('client.')->group(function () {
-    Route::view('/dashboard', 'dashboards.client')->name('dashboard');
+    Route::get('/dashboard', [RentalCatalogController::class, 'index'])->name('dashboard');
+    Route::get('/catalog/rentals', [RentalCatalogController::class, 'index'])->name('catalog.rentals');
+    Route::get('/catalog/rentals/{car}', [RentalCatalogController::class, 'show'])->name('catalog.rentals.show');
+    Route::post('/catalog/rentals/{car}/book', [RentalCatalogController::class, 'book'])->name('catalog.rentals.book');
+
+    Route::get('/catalog/test-drives', [TestDriveCatalogController::class, 'index'])->name('catalog.test-drives');
+    Route::get('/catalog/test-drives/{car}', [TestDriveCatalogController::class, 'show'])->name('catalog.test-drives.show');
+    Route::post('/catalog/test-drives/{car}/book', [TestDriveCatalogController::class, 'book'])->name('catalog.test-drives.book');
 });
 
 // профиль оставляем как есть
