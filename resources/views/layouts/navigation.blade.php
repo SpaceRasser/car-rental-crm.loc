@@ -26,6 +26,15 @@
                     @endif
 
                     @if(in_array(auth()->user()->role, ['admin','manager'], true))
+                    <x-nav-link :href="route('manager.catalog.rentals')" :active="request()->routeIs('manager.catalog.rentals')">
+                        Каталог аренды
+                    </x-nav-link>
+                    <x-nav-link :href="route('manager.catalog.test-drives')" :active="request()->routeIs('manager.catalog.test-drives')">
+                        Каталог тест-драйва
+                    </x-nav-link>
+                    @endif
+
+                    @if(in_array(auth()->user()->role, ['admin','manager'], true))
                     <x-nav-link :href="route('manager.cars.index')" :active="request()->routeIs('manager.cars.*')">
                         Автомобили
                     </x-nav-link>
@@ -161,6 +170,15 @@
                 <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                     Дашборд
                 </x-responsive-nav-link>
+            @endif
+
+            @if(in_array(auth()->user()->role, ['admin','manager'], true))
+            <x-responsive-nav-link :href="route('manager.catalog.rentals')" :active="request()->routeIs('manager.catalog.rentals')">
+                Каталог аренды
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('manager.catalog.test-drives')" :active="request()->routeIs('manager.catalog.test-drives')">
+                Каталог тест-драйва
+            </x-responsive-nav-link>
             @endif
 
             @if(in_array(auth()->user()->role, ['admin','manager'], true))

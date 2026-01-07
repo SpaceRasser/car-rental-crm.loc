@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Client\RentalCatalogController;
 use App\Http\Controllers\Client\TestDriveCatalogController;
+use App\Http\Controllers\Manager\CatalogController;
 use App\Models\Client;
 use App\Models\Extra;
 use App\Models\Rental;
@@ -42,6 +43,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
 Route::middleware(['auth', 'role:admin,manager'])->prefix('manager')->name('manager.')->group(function () {
     Route::view('/dashboard', 'dashboards.manager')->name('dashboard');
+    Route::get('/catalog/rentals', [CatalogController::class, 'rentals'])->name('catalog.rentals');
+    Route::get('/catalog/test-drives', [CatalogController::class, 'testDrives'])->name('catalog.test-drives');
     Route::view('/cars', 'manager.cars.index')->name('cars.index');
     Route::view('/cars/create', 'manager.cars.create')->name('cars.create');
     Route::get('/cars/{car}/edit', function (Car $car) {
