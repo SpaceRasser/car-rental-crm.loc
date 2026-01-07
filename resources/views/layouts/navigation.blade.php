@@ -12,9 +12,18 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex sm:items-center">
-                <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        Дашборд
-                    </x-nav-link>
+                    @if(auth()->user()->role === 'client')
+                        <x-nav-link :href="route('client.dashboard')" :active="request()->routeIs('client.dashboard') || request()->routeIs('client.catalog.rentals*')">
+                            Каталог для аренды
+                        </x-nav-link>
+                        <x-nav-link :href="route('client.catalog.test-drives')" :active="request()->routeIs('client.catalog.test-drives*')">
+                            Каталог для тест-драйва
+                        </x-nav-link>
+                    @else
+                        <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                            Дашборд
+                        </x-nav-link>
+                    @endif
 
                     @if(in_array(auth()->user()->role, ['admin','manager'], true))
                     <x-nav-link :href="route('manager.cars.index')" :active="request()->routeIs('manager.cars.*')">
@@ -141,9 +150,18 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                Дашборд
-            </x-responsive-nav-link>
+            @if(auth()->user()->role === 'client')
+                <x-responsive-nav-link :href="route('client.dashboard')" :active="request()->routeIs('client.dashboard') || request()->routeIs('client.catalog.rentals*')">
+                    Каталог для аренды
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('client.catalog.test-drives')" :active="request()->routeIs('client.catalog.test-drives*')">
+                    Каталог для тест-драйва
+                </x-responsive-nav-link>
+            @else
+                <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                    Дашборд
+                </x-responsive-nav-link>
+            @endif
 
             @if(in_array(auth()->user()->role, ['admin','manager'], true))
             <x-responsive-nav-link :href="route('manager.cars.index')" :active="request()->routeIs('manager.cars.*')">
