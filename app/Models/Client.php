@@ -77,6 +77,31 @@ class Client extends Model
         return $this->hasMany(TestDrive::class, 'client_id');
     }
 
+    public function missingRequiredProfileFields(): array
+    {
+        $fields = [
+            'last_name' => 'Фамилия',
+            'first_name' => 'Имя',
+            'phone' => 'Телефон',
+            'email' => 'Email',
+            'driver_license_number' => '№ водительского удостоверения',
+            'driver_license_issued_at' => 'Права выданы',
+            'driver_license_expires_at' => 'Права действуют до',
+            'birth_date' => 'Дата рождения',
+        ];
+
+        $missing = [];
+
+        foreach ($fields as $field => $label) {
+            $value = $this->{$field};
+            if (is_null($value) || (is_string($value) && trim($value) === '')) {
+                $missing[] = $label;
+            }
+        }
+
+        return $missing;
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

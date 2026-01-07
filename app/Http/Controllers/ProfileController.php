@@ -61,6 +61,36 @@ class ProfileController extends Controller
     }
 
     /**
+     * Update the client's profile information.
+     */
+    public function updateClient(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'first_name' => ['required', 'string', 'max:80'],
+            'last_name' => ['required', 'string', 'max:80'],
+            'middle_name' => ['nullable', 'string', 'max:80'],
+            'phone' => ['required', 'string', 'max:30'],
+            'email' => ['required', 'email', 'max:120'],
+            'driver_license_number' => ['required', 'string', 'max:50'],
+            'driver_license_issued_at' => ['required', 'date'],
+            'driver_license_expires_at' => ['required', 'date', 'after_or_equal:driver_license_issued_at'],
+            'birth_date' => ['required', 'date'],
+            'trusted_person_name' => ['nullable', 'string', 'max:120'],
+            'trusted_person_phone' => ['nullable', 'string', 'max:30'],
+            'trusted_person_license_number' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $user = $request->user();
+        $client = Client::query()->firstOrNew(['user_id' => $user->id]);
+
+        $client->fill($data);
+        $client->user_id = $user->id;
+        $client->save();
+
+        return Redirect::route('profile.edit')->with('status', 'client-profile-updated');
+    }
+
+    /**
      * Delete the user's account.
      */
     public function destroy(Request $request): RedirectResponse

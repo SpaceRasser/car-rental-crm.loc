@@ -85,8 +85,14 @@ class TestDriveCatalogController extends Controller
         $client = Client::query()->where('user_id', $request->user()->id)->first();
 
         if (!$client) {
-            return redirect()->route('client.catalog.test-drives.show', $car)
-                ->with('booking_error', 'Связанный профиль клиента не найден.');
+            return redirect()->route('profile.edit')
+                ->with('profile_incomplete', 'Для бронирования заполните данные клиента в профиле.');
+        }
+
+        $missingFields = $client->missingRequiredProfileFields();
+        if (!empty($missingFields)) {
+            return redirect()->route('profile.edit')
+                ->with('profile_incomplete', 'Заполните обязательные поля: '.implode(', ', $missingFields).'.');
         }
 
         $data = $request->validate([
