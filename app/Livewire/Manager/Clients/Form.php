@@ -25,6 +25,9 @@ class Form extends Component
     public string $reliability_status = 'normal';
     public bool $is_verified = false;
     public ?string $notes = null;
+    public ?string $trusted_person_name = null;
+    public ?string $trusted_person_phone = null;
+    public ?string $trusted_person_license_number = null;
 
     public function mount(?int $clientId = null): void
     {
@@ -48,6 +51,10 @@ class Form extends Component
             $this->reliability_status = $this->client->reliability_status;
             $this->is_verified = (bool) $this->client->is_verified;
             $this->notes = $this->client->notes;
+            $this->trusted_person_name = $this->client->trusted_person_name;
+            $this->trusted_person_phone = $this->client->trusted_person_phone;
+            $this->trusted_person_license_number = $this->client->trusted_person_license_number;
+
         }
     }
 
@@ -69,6 +76,9 @@ class Form extends Component
             'reliability_status' => ['required', Rule::in(['normal', 'vip', 'blocked'])],
             'is_verified' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'trusted_person_name' => ['nullable', 'string', 'max:120'],
+            'trusted_person_phone' => ['nullable', 'string', 'max:30'],
+            'trusted_person_license_number' => ['nullable', 'string', 'max:50'],
         ];
     }
 

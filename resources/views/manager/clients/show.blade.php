@@ -44,6 +44,17 @@
             </div>
 
             <div class="bg-white rounded shadow p-5">
+                <div class="font-semibold mb-3">Доверенное лицо</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <div><span class="text-gray-500">ФИО:</span> {{ $client->trusted_person_name ?? '—' }}</div>
+                        <div><span class="text-gray-500">Телефон:</span> {{ $client->trusted_person_phone ?? '—' }}</div>
+                        <div><span class="text-gray-500">В/У:</span> {{ $client->trusted_person_license_number ?? '—' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded shadow p-5">
                 <div class="flex items-center justify-between mb-3">
                     <div class="font-semibold">История аренд (последние 10)</div>
 

@@ -18,8 +18,18 @@ class RentalContractController extends Controller
         // ✅ сразу грузим всё нужное, включая extras
         $rental->load(['car', 'client', 'payments', 'extras']);
 
+        $groupRentals = collect([$rental]);
+        if ($rental->group_uuid) {
+            $groupRentals = Rental::query()
+                ->with(['car', 'client', 'payments', 'extras'])
+                ->where('group_uuid', $rental->group_uuid)
+                ->orderBy('id')
+                ->get();
+        }
+
         // ✅ оплачено
-        $paid = (float) $rental->payments
+        $paid = (float) $groupRentals
+            ->flatMap(fn ($item) => $item->payments)
             ->where('status', 'paid')
             ->sum('amount');
 
@@ -28,10 +38,12 @@ class RentalContractController extends Controller
         $days = max(1, $days);
 
         // ✅ база аренды (без доп.услуг и без депозита)
-        $base = (float) ($rental->base_total ?? 0);
+        $base = (float) $groupRentals->sum(fn ($item) => (float) ($item->base_total ?? 0));
         if ($base <= 0) {
-            $daily = (float) ($rental->daily_price ?? 0);
-            $base = round($days * $daily, 2);
+            $base = (float) $groupRentals->sum(function ($item) use ($days) {
+                $daily = (float) ($item->daily_price ?? 0);
+                return round($days * $daily, 2);
+            });
         }
 
         // ✅ доп. услуги (по слепку pivot)
@@ -55,17 +67,17 @@ class RentalContractController extends Controller
         $extrasTotal = round($extrasTotal, 2);
 
         // ✅ скидка/штрафы (если используешь)
-        $discount = (float) ($rental->discount_total ?? 0);
-        $penalty  = (float) ($rental->penalty_total ?? 0);
+        $discount = (float) $groupRentals->sum(fn ($item) => (float) ($item->discount_total ?? 0));
+        $penalty  = (float) $groupRentals->sum(fn ($item) => (float) ($item->penalty_total ?? 0));
 
         // ✅ аренда итого (без депозита)
-        $rent = (float) ($rental->grand_total ?? 0);
+        $rent = (float) $groupRentals->sum(fn ($item) => (float) ($item->grand_total ?? 0));
         if ($rent <= 0) {
             $rent = round($base + $extrasTotal - $discount + $penalty, 2);
         }
 
         // ✅ депозит
-        $deposit = (float) ($rental->deposit_amount ?? 0);
+        $deposit = (float) $groupRentals->sum(fn ($item) => (float) ($item->deposit_amount ?? 0));
 
         // ✅ итог к оплате
         $total = round($rent + $deposit, 2);
@@ -77,6 +89,7 @@ class RentalContractController extends Controller
 
         $data = compact(
             'rental',
+            'groupRentals',
             'company',
             'paid',
             'days',
