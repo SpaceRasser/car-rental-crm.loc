@@ -60,6 +60,18 @@ class Client extends Model
         return $this->hasMany(Rental::class, 'client_id');
     }
 
+    public function carAssignments()
+    {
+        return $this->hasMany(ClientCarAssignment::class, 'client_id');
+    }
+
+    public function cars()
+    {
+        return $this->belongsToMany(Car::class, 'client_car_assignments', 'client_id', 'car_id')
+            ->withPivot('relation_type')
+            ->withTimestamps();
+    }
+
     public function testDrives()
     {
         return $this->hasMany(TestDrive::class, 'client_id');

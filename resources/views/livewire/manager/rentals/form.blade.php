@@ -231,6 +231,32 @@
                 @endif
             </div>
 
+            <div class="bg-gray-50 rounded p-4 text-sm space-y-3">
+                <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" wire:model.defer="use_trusted_person" class="rounded border-gray-300" />
+                    Доверенное лицо для аренды
+                </label>
+                @if($use_trusted_person)
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="text-xs text-gray-500">ФИО</label>
+                        <input wire:model.defer="trusted_person_name" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_name') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Телефон</label>
+                        <input wire:model.defer="trusted_person_phone" data-mask="phone" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">№ водительского удостоверения</label>
+                        <input wire:model.defer="trusted_person_license_number" data-mask="license" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+                @endif
+            </div>
+
             <div>
                 <label class="text-sm text-gray-600">Комментарий</label>
                 <textarea wire:model.defer="notes" rows="3" class="mt-1 w-full rounded border-gray-300"></textarea>
