@@ -27,7 +27,7 @@ class Photos extends Component
     {
         $this->validate([
             'newPhotos' => ['required', 'array', 'min:1', 'max:10'],
-            'newPhotos.*' => ['image', 'max:4096'], // 4MB
+            'newPhotos.*' => ['image'],
         ]);
 
         $car = Car::findOrFail($this->carId);

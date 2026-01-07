@@ -32,5 +32,29 @@
 </div>
 
 @livewireScripts
+<script>
+    document.addEventListener('input', (event) => {
+        const input = event.target;
+        if (!input.matches('[data-select-target]')) {
+            return;
+        }
+
+        const select = document.getElementById(input.dataset.selectTarget);
+        if (!select) {
+            return;
+        }
+
+        const term = input.value.toLowerCase();
+        Array.from(select.options).forEach((option, index) => {
+            if (index === 0 && option.value === '') {
+                option.hidden = false;
+                return;
+            }
+
+            const text = option.textContent.toLowerCase();
+            option.hidden = term !== '' && !text.includes(term);
+        });
+    });
+</script>
 </body>
 </html>

@@ -23,7 +23,13 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="text-sm text-gray-600">Тип расчёта *</label>
-                    <select wire:model.defer="pricing_type" class="mt-1 w-full rounded border-gray-300">
+                    <input
+                        type="text"
+                        placeholder="Поиск типа..."
+                        data-select-target="extra-pricing-select"
+                        class="mt-1 w-full rounded border-gray-300 text-sm"
+                    />
+                    <select id="extra-pricing-select" wire:model.defer="pricing_type" class="mt-2 w-full rounded border-gray-300">
                         @foreach($pricingLabels as $k => $label)
                         <option value="{{ $k }}">{{ $label }}</option>
                         @endforeach

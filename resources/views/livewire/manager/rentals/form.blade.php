@@ -13,7 +13,13 @@
 
                 <div>
                     <label class="text-sm text-gray-600">Клиент *</label>
-                    <select wire:model.live="client_id" class="mt-1 w-full rounded border-gray-300">
+                    <input
+                        type="text"
+                        placeholder="Поиск клиента..."
+                        data-select-target="rental-client-select"
+                        class="mt-1 w-full rounded border-gray-300 text-sm"
+                    />
+                    <select id="rental-client-select" wire:model.live="client_id" class="mt-2 w-full rounded border-gray-300">
                         <option value="">— выбрать —</option>
                         @foreach($clients as $c)
                         <option value="{{ $c->id }}">
@@ -27,7 +33,13 @@
 
                 <div>
                     <label class="text-sm text-gray-600">Автомобиль *</label>
-                    <select wire:model.live="car_id" class="mt-1 w-full rounded border-gray-300">
+                    <input
+                        type="text"
+                        placeholder="Поиск автомобиля..."
+                        data-select-target="rental-car-select"
+                        class="mt-1 w-full rounded border-gray-300 text-sm"
+                    />
+                    <select id="rental-car-select" wire:model.live="car_id" class="mt-2 w-full rounded border-gray-300">
                         <option value="">— выбрать —</option>
                         @foreach($cars as $car)
                         <option value="{{ $car->id }}">
@@ -133,7 +145,13 @@
 
                 <div>
                     <label class="text-sm text-gray-600">Статус</label>
-                    <select wire:model.defer="status" class="mt-1 w-full rounded border-gray-300">
+                    <input
+                        type="text"
+                        placeholder="Поиск статуса..."
+                        data-select-target="rental-status-select"
+                        class="mt-1 w-full rounded border-gray-300 text-sm"
+                    />
+                    <select id="rental-status-select" wire:model.defer="status" class="mt-2 w-full rounded border-gray-300">
                         @foreach($statuses as $k => $label)
                         <option value="{{ $k }}">{{ $label }}</option>
                         @endforeach

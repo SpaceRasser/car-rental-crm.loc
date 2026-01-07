@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,8 +17,30 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        $user = $request->user();
+        $client = Client::query()->where('user_id', $user->id)->first();
+        $rentals = collect();
+        $testDrives = collect();
+
+        if ($client) {
+            $rentals = $client->rentals()
+                ->with('car')
+                ->latest('starts_at')
+                ->limit(10)
+                ->get();
+
+            $testDrives = $client->testDrives()
+                ->with(['car', 'manager'])
+                ->latest('scheduled_at')
+                ->limit(10)
+                ->get();
+        }
+
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user' => $user,
+            'client' => $client,
+            'rentals' => $rentals,
+            'testDrives' => $testDrives,
         ]);
     }
 
