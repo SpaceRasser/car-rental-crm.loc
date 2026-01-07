@@ -50,7 +50,7 @@
 
 
 <div class="box">
-    <b>2. Автомобиль</b>
+    <b>2. Автомобили</b>
     <table>
         <tr>
             <th>Марка / Модель</th>
@@ -58,12 +58,14 @@
             <th>VIN</th>
             <th>Гос. номер</th>
         </tr>
+        @foreach(($groupRentals ?? collect([$rental])) as $item)
         <tr>
-            <td>{{ $rental->car?->brand }} {{ $rental->car?->model }}</td>
-            <td>{{ $rental->car?->year ?? '—' }}</td>
-            <td>{{ $rental->car?->vin ?? '—' }}</td>
-            <td>{{ $rental->car?->plate_number ?? '—' }}</td>
+            <td>{{ $item->car?->brand }} {{ $item->car?->model }}</td>
+            <td>{{ $item->car?->year ?? '—' }}</td>
+            <td>{{ $item->car?->vin ?? '—' }}</td>
+            <td>{{ $item->car?->plate_number ?? '—' }}</td>
         </tr>
+        @endforeach
     </table>
 </div>
 

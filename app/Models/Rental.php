@@ -41,6 +41,11 @@ class Rental extends Model
         'contract_pdf_path',
         'purpose',
         'notes',
+        'group_uuid',
+        'is_trusted_person',
+        'trusted_person_name',
+        'trusted_person_phone',
+        'trusted_person_license_number',
         'cancel_reason',
     ];
 
@@ -62,6 +67,7 @@ class Rental extends Model
         'mileage_end_km' => 'integer',
         'fuel_start_percent' => 'integer',
         'fuel_end_percent' => 'integer',
+        'is_trusted_person' => 'boolean',
     ];
 
     // ---- Relations ----
@@ -135,7 +141,10 @@ class Rental extends Model
                 'starts_at','ends_at',
                 'daily_price','deposit_amount',
                 'days_count','base_total','discount_total','penalty_total','grand_total',
-                'notes','cancel_reason'
+                'notes','cancel_reason',
+                'group_uuid',
+                'is_trusted_person',
+                'trusted_person_name','trusted_person_phone','trusted_person_license_number',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

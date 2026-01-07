@@ -35,25 +35,31 @@
 
                 <div>
                     <label class="text-sm text-gray-600">Телефон</label>
-                    <input wire:model.defer="phone" class="mt-1 w-full rounded border-gray-300" />
+                    <input wire:model.defer="phone" data-mask="phone" class="mt-1 w-full rounded border-gray-300" />
                     @error('phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                 </div>
 
                 <div>
                     <label class="text-sm text-gray-600">Email</label>
-                    <input wire:model.defer="email" class="mt-1 w-full rounded border-gray-300" />
+                    <input wire:model.defer="email" data-mask="email" class="mt-1 w-full rounded border-gray-300" />
                     @error('email') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                 </div>
 
                 <div>
                     <label class="text-sm text-gray-600">№ водительского удостоверения</label>
-                    <input wire:model.defer="driver_license_number" class="mt-1 w-full rounded border-gray-300" />
+                    <input wire:model.defer="driver_license_number" data-mask="license" class="mt-1 w-full rounded border-gray-300" />
                     @error('driver_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                 </div>
 
                 <div>
                     <label class="text-sm text-gray-600">Статус надёжности</label>
-                    <select wire:model.defer="reliability_status" class="mt-1 w-full rounded border-gray-300">
+                    <input
+                        type="text"
+                        placeholder="Поиск статуса..."
+                        data-select-target="client-reliability-select"
+                        class="mt-1 w-full rounded border-gray-300 text-sm"
+                    />
+                    <select id="client-reliability-select" wire:model.defer="reliability_status" class="mt-2 w-full rounded border-gray-300">
                         @foreach($statuses as $k => $label)
                         <option value="{{ $k }}">{{ $label }}</option>
                         @endforeach
@@ -71,6 +77,27 @@
                     <label class="text-sm text-gray-600">Права действуют до</label>
                     <input type="date" wire:model.defer="driver_license_expires_at" class="mt-1 w-full rounded border-gray-300" />
                     @error('driver_license_expires_at') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                </div>
+            </div>
+
+            <div class="border-t pt-4">
+                <div class="text-sm font-semibold text-gray-700">Доверенное лицо</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    <div>
+                        <label class="text-sm text-gray-600">ФИО</label>
+                        <input wire:model.defer="trusted_person_name" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_name') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600">Телефон</label>
+                        <input wire:model.defer="trusted_person_phone" data-mask="phone" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600">№ водительского удостоверения</label>
+                        <input wire:model.defer="trusted_person_license_number" data-mask="license" class="mt-1 w-full rounded border-gray-300" />
+                        @error('trusted_person_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
                 </div>
             </div>
 
