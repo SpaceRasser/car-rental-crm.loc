@@ -29,6 +29,9 @@ class Client extends Model
         'reliability_status',
         'is_verified',
         'notes',
+        'trusted_person_name',
+        'trusted_person_phone',
+        'trusted_person_license_number',
     ];
 
     protected $casts = [
@@ -57,6 +60,18 @@ class Client extends Model
         return $this->hasMany(Rental::class, 'client_id');
     }
 
+    public function carAssignments()
+    {
+        return $this->hasMany(ClientCarAssignment::class, 'client_id');
+    }
+
+    public function cars()
+    {
+        return $this->belongsToMany(Car::class, 'client_car_assignments', 'client_id', 'car_id')
+            ->withPivot('relation_type')
+            ->withTimestamps();
+    }
+
     public function testDrives()
     {
         return $this->hasMany(TestDrive::class, 'client_id');
@@ -73,6 +88,7 @@ class Client extends Model
                 'driver_license_number','driver_license_issued_at','driver_license_expires_at',
                 'birth_date',
                 'reliability_status','is_verified','notes',
+                'trusted_person_name','trusted_person_phone','trusted_person_license_number',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

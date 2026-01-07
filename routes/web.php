@@ -73,6 +73,7 @@ Route::middleware(['auth', 'role:admin,manager'])->prefix('manager')->name('mana
     })->name('test-drives.show');
     Route::get('/clients/{client}', function (Client $client) {
         $client->load([
+            'carAssignments' => fn($q) => $q->with('car')->orderByDesc('id'),
             'rentals' => fn($q) => $q
                 ->with(['car', 'payments' => fn($p) => $p->orderByDesc('id')])
                 ->orderByDesc('id')
