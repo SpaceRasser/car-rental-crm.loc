@@ -49,6 +49,26 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        $user = Auth::user();
+
+        if ($user && property_exists($user, 'is_active') && ! $user->is_active) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Аккаунт отключён. Обратитесь к администратору.',
+            ]);
+        }
+
+        if ($user && $user->role === 'client' && $user->client?->reliability_status === 'blocked') {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Аккаунт заблокирован. Обратитесь к администратору.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

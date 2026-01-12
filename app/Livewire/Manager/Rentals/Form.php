@@ -14,18 +14,13 @@ use Illuminate\Support\Str;
 class Form extends Component
 {
     public ?int $client_id = null;
-    public ?int $car_id = null;
-    public array $additional_car_ids = [];
+    public array $carBlocks = [];
 
     public string $starts_at = '';
     public string $ends_at = '';
 
     public string $status = 'new';
     public ?string $notes = null;
-    public bool $use_trusted_person = false;
-    public ?string $trusted_person_name = null;
-    public ?string $trusted_person_phone = null;
-    public ?string $trusted_person_license_number = null;
 
     // цены (подставляем из авто)
     public string $daily_price = '0.00';
@@ -37,7 +32,8 @@ class Form extends Component
     public string $total_amount = '0.00';
     public array $selectedExtras = [];
     public string $extras_amount = '0.00';
-    public array $additionalCarsSummary = [];
+    public array $carSummaries = [];
+    public array $mandatoryExtraIds = [];
 
     public bool $overridePricing = false;
 
@@ -48,37 +44,31 @@ class Form extends Component
 
         $this->client_id = request()->integer('client_id') ?: $this->client_id;
 
-        $this->recalc();
-    }
+        if (empty($this->carBlocks)) {
+            $this->carBlocks[] = $this->blankCarBlock();
+        }
 
+        $this->mandatoryExtraIds = Extra::query()
+            ->where('is_active', true)
+            ->where('name', 'like', '%страх%')
+            ->pluck('id')
+            ->map(fn($id) => (int) $id)
+            ->all();
 
-    public function updatedCarId(): void
-    {
-        if (!$this->car_id) return;
-
-        $car = Car::find($this->car_id);
-        if (!$car) return;
-
-        $this->daily_price = (string) ($car->daily_price ?? '0.00');
-        $this->deposit_amount = (string) ($car->deposit_amount ?? '0.00');
-
-        $this->overridePricing = false;
-
-        $this->recalc();
-    }
-
-    public function updatedAdditionalCarIds(): void
-    {
-        $this->rebuildAdditionalCarsSummary();
+        $this->applyMandatoryExtras();
         $this->recalc();
     }
 
     public function updated($name): void
     {
         if (
-            in_array($name, ['starts_at', 'ends_at', 'daily_price', 'deposit_amount', 'car_id'], true)
+            in_array($name, ['starts_at', 'ends_at', 'daily_price', 'deposit_amount'], true)
             || str_starts_with($name, 'selectedExtras')
+            || str_starts_with($name, 'carBlocks')
         ) {
+            if ($name === 'carBlocks.0.car_id') {
+                $this->syncPrimaryCarPricing();
+            }
             $this->recalc();
         }
     }
@@ -88,9 +78,8 @@ class Form extends Component
     {
         return [
             'client_id' => ['required', 'integer', Rule::exists('clients', 'id')],
-            'car_id' => ['required', 'integer', Rule::exists('cars', 'id')],
-            'additional_car_ids' => ['array'],
-            'additional_car_ids.*' => ['integer', Rule::exists('cars', 'id')],
+            'carBlocks' => ['required', 'array', 'min:1'],
+            'carBlocks.*.car_id' => ['required', 'integer', Rule::exists('cars', 'id')],
 
             'starts_at' => ['required', 'date'],
             'ends_at' => ['required', 'date', 'after:starts_at'],
@@ -100,10 +89,10 @@ class Form extends Component
 
             'status' => ['required', Rule::in(['new', 'confirmed', 'active', 'closed', 'cancelled', 'overdue'])],
             'notes' => ['nullable', 'string', 'max:5000'],
-            'use_trusted_person' => ['boolean'],
-            'trusted_person_name' => ['nullable', 'string', 'max:120'],
-            'trusted_person_phone' => ['nullable', 'string', 'max:30'],
-            'trusted_person_license_number' => ['nullable', 'string', 'max:50'],
+            'carBlocks.*.use_trusted_person' => ['boolean'],
+            'carBlocks.*.trusted_person_name' => ['nullable', 'string', 'max:120'],
+            'carBlocks.*.trusted_person_phone' => ['nullable', 'string', 'max:30'],
+            'carBlocks.*.trusted_person_license_number' => ['nullable', 'string', 'max:50'],
         ];
     }
 
@@ -125,8 +114,69 @@ class Form extends Component
         return max(1, (int) ceil($minutes / 1440));
     }
 
+    private function blankCarBlock(): array
+    {
+        return [
+            'car_id' => null,
+            'use_trusted_person' => false,
+            'trusted_person_name' => null,
+            'trusted_person_phone' => null,
+            'trusted_person_license_number' => null,
+        ];
+    }
+
+    public function addCarBlock(): void
+    {
+        $this->carBlocks[] = $this->blankCarBlock();
+        $this->recalc();
+    }
+
+    public function removeCarBlock(int $index): void
+    {
+        unset($this->carBlocks[$index]);
+        $this->carBlocks = array_values($this->carBlocks);
+        $this->recalc();
+    }
+
+    private function selectedCarIds(): array
+    {
+        return array_values(array_filter(array_map(function ($block) {
+            return isset($block['car_id']) ? (int) $block['car_id'] : null;
+        }, $this->carBlocks)));
+    }
+
+    private function applyMandatoryExtras(): void
+    {
+        $carCount = max(1, count($this->selectedCarIds()));
+
+        foreach ($this->mandatoryExtraIds as $extraId) {
+            $this->selectedExtras[$extraId] = $carCount;
+        }
+    }
+
+    private function syncPrimaryCarPricing(): void
+    {
+        if ($this->overridePricing) {
+            return;
+        }
+
+        $primaryId = $this->carBlocks[0]['car_id'] ?? null;
+        if (! $primaryId) {
+            return;
+        }
+
+        $car = Car::find($primaryId);
+        if (! $car) {
+            return;
+        }
+
+        $this->daily_price = (string) ($car->daily_price ?? '0.00');
+        $this->deposit_amount = (string) ($car->deposit_amount ?? '0.00');
+    }
+
     public function recalc(): void
     {
+        $this->applyMandatoryExtras();
         $from = $this->parseDt($this->starts_at);
         $to   = $this->parseDt($this->ends_at);
 
@@ -144,11 +194,11 @@ class Form extends Component
         $deposit = (float) $this->deposit_amount;
 
         // базовая аренда
-        $rent = $this->days * $daily;
-        $depositTotal = $deposit;
+        $rent = 0.0;
+        $depositTotal = 0.0;
 
-        $this->rebuildAdditionalCarsSummary();
-        foreach ($this->additionalCarsSummary as $summary) {
+        $this->rebuildCarSummaries();
+        foreach ($this->carSummaries as $summary) {
             $rent += $this->days * (float) $summary['daily_price'];
             $depositTotal += (float) $summary['deposit_amount'];
         }
@@ -164,17 +214,17 @@ class Form extends Component
         $this->total_amount  = number_format($total, 2, '.', '');
     }
 
-    private function rebuildAdditionalCarsSummary(): void
+    private function rebuildCarSummaries(): void
     {
-        if (empty($this->additional_car_ids)) {
-            $this->additionalCarsSummary = [];
+        $carIds = $this->selectedCarIds();
+        if (empty($carIds)) {
+            $this->carSummaries = [];
             return;
         }
 
-        $carIds = array_values(array_unique(array_map('intval', $this->additional_car_ids)));
         $cars = Car::query()->whereIn('id', $carIds)->get()->keyBy('id');
+        $this->carSummaries = [];
 
-        $this->additionalCarsSummary = [];
         foreach ($carIds as $carId) {
             $car = $cars->get($carId);
             if (!$car) {
@@ -182,7 +232,7 @@ class Form extends Component
             }
             $daily = $this->overridePricing ? (float) $this->daily_price : (float) ($car->daily_price ?? 0);
             $deposit = $this->overridePricing ? (float) $this->deposit_amount : (float) ($car->deposit_amount ?? 0);
-            $this->additionalCarsSummary[] = [
+            $this->carSummaries[] = [
                 'id' => $car->id,
                 'label' => trim($car->brand.' '.$car->model.' • '.$car->plate_number),
                 'daily_price' => $daily,
@@ -207,15 +257,28 @@ class Form extends Component
     {
         $data = $this->validate();
 
-        $primaryCar = Car::findOrFail((int) $data['car_id']);
-        $additionalCarIds = array_values(array_unique(array_map('intval', $data['additional_car_ids'] ?? [])));
-        $carIds = array_values(array_unique(array_merge([(int) $data['car_id']], $additionalCarIds)));
+        $this->applyMandatoryExtras();
+        $blocks = array_values($data['carBlocks'] ?? []);
+        $carIds = array_values(array_unique(array_map(fn($block) => (int) $block['car_id'], $blocks)));
+
+        if (count($carIds) !== count($blocks)) {
+            $this->addError('carBlocks', 'Один и тот же автомобиль нельзя выбрать дважды.');
+            return;
+        }
+
+        $primaryCarId = $carIds[0] ?? null;
+        if (! $primaryCarId) {
+            $this->addError('carBlocks', 'Добавьте хотя бы один автомобиль.');
+            return;
+        }
+
+        $primaryCar = Car::findOrFail($primaryCarId);
 
         // базовая защита
         foreach ($carIds as $carId) {
             $car = Car::find($carId);
             if (!$car || (isset($car->is_active) && !$car->is_active)) {
-                $this->addError('car_id', 'Один из выбранных автомобилей неактивен.');
+                $this->addError('carBlocks', 'Один из выбранных автомобилей неактивен.');
                 return;
             }
         }
@@ -253,11 +316,7 @@ class Form extends Component
         $days = $this->calcDays($from, $to);        // как у тебя уже сделано
         $days = max(1, (int) $days);                // страховка
 
-        // ✅ считаем на сервере
-        $rentTotal = round($days * $daily, 2);
-
         $extrasTotal = $this->calcExtrasTotal($days);
-        $grandTotal  = round($rentTotal + $extrasTotal, 2);
 
         // создаём аренду
         $groupUuid = (string) Str::uuid();
@@ -272,6 +331,17 @@ class Form extends Component
             $carExtrasTotal = $index === 0 ? $extrasTotal : 0;
             $carGrandTotal = round($carRentTotal + $carExtrasTotal, 2);
 
+            $block = $blocks[$index] ?? [];
+            $useTrusted = (bool) ($block['use_trusted_person'] ?? false);
+            $trustedName = $useTrusted ? trim((string) ($block['trusted_person_name'] ?? '')) : null;
+            $trustedPhone = $useTrusted ? trim((string) ($block['trusted_person_phone'] ?? '')) : null;
+            $trustedLicense = $useTrusted ? trim((string) ($block['trusted_person_license_number'] ?? '')) : null;
+
+            if ($useTrusted && ($trustedName === '' || $trustedPhone === '' || $trustedLicense === '')) {
+                $this->addError('carBlocks', 'Заполните данные доверенного лица для каждого выбранного авто.');
+                return;
+            }
+
             $rental = Rental::create([
                 'client_id'  => (int) $data['client_id'],
                 'car_id'     => $carId,
@@ -284,10 +354,10 @@ class Form extends Component
                 'notes'  => $data['notes'] ?? null,
 
                 'group_uuid' => $groupUuid,
-                'is_trusted_person' => $this->use_trusted_person,
-                'trusted_person_name' => $this->use_trusted_person ? $this->trusted_person_name : null,
-                'trusted_person_phone' => $this->use_trusted_person ? $this->trusted_person_phone : null,
-                'trusted_person_license_number' => $this->use_trusted_person ? $this->trusted_person_license_number : null,
+                'is_trusted_person' => $useTrusted,
+                'trusted_person_name' => $trustedName,
+                'trusted_person_phone' => $trustedPhone,
+                'trusted_person_license_number' => $trustedLicense,
 
                 'daily_price'    => $carDaily,
                 'deposit_amount' => round($carDeposit, 2),
@@ -338,25 +408,23 @@ class Form extends Component
     public function updatedOverridePricing(): void
     {
         if ($this->overridePricing) {
-            $this->rebuildAdditionalCarsSummary();
+            $this->rebuildCarSummaries();
             $this->recalc();
             return;
         }
 
-        if (!$this->car_id) return;
-
-        $car = Car::find($this->car_id);
-        if (!$car) return;
-
-        $this->daily_price = (string) ($car->daily_price ?? '0.00');
-        $this->deposit_amount = (string) ($car->deposit_amount ?? '0.00');
-
-        $this->rebuildAdditionalCarsSummary();
+        $this->syncPrimaryCarPricing();
+        $this->rebuildCarSummaries();
         $this->recalc();
     }
 
     public function toggleExtra(int $extraId): void
     {
+        if (in_array($extraId, $this->mandatoryExtraIds, true)) {
+            $this->selectedExtras[$extraId] = $this->selectedExtras[$extraId] ?? 1;
+            return;
+        }
+
         if (isset($this->selectedExtras[$extraId])) {
             unset($this->selectedExtras[$extraId]);
         } else {

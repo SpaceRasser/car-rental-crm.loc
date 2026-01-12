@@ -19,6 +19,10 @@ class RoleMiddleware
             abort(403, 'User is inactive');
         }
 
+        if ($user->role === 'client' && $user->client?->reliability_status === 'blocked') {
+            abort(403, 'Client is blocked');
+        }
+
         if (!empty($roles) && !in_array($user->role, $roles, true)) {
             abort(403, 'Forbidden');
         }
