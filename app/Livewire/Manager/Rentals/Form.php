@@ -147,8 +147,10 @@ class Form extends Component
 
     private function applyMandatoryExtras(): void
     {
+        $carCount = max(1, count($this->selectedCarIds()));
+
         foreach ($this->mandatoryExtraIds as $extraId) {
-            $this->selectedExtras[$extraId] = max(1, (int) ($this->selectedExtras[$extraId] ?? 1));
+            $this->selectedExtras[$extraId] = $carCount;
         }
     }
 

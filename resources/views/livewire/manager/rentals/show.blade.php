@@ -28,8 +28,20 @@
 
             <div class="pt-2 border-t"></div>
 
-            <div><span class="text-gray-500">Авто:</span> {{ $rental->car?->brand }} {{ $rental->car?->model }}</div>
-            <div><span class="text-gray-500">Госномер:</span> <span class="font-mono">{{ $rental->car?->plate_number ?? '—' }}</span></div>
+            <div><span class="text-gray-500">Автомобили:</span></div>
+            <div class="space-y-1">
+                @foreach($groupRentals as $item)
+                    <div>
+                        <span class="font-medium">{{ $item->car?->brand }} {{ $item->car?->model }}</span>
+                        <span class="text-xs text-gray-500 font-mono">{{ $item->car?->plate_number ?? '—' }}</span>
+                        @if($item->is_trusted_person)
+                            <span class="ml-2 text-xs text-red-600">
+                                Доверенное лицо: {{ $item->trusted_person_name ?? '—' }}
+                            </span>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
 
             <div class="pt-2 border-t"></div>
 
@@ -102,20 +114,30 @@
             <div class="mt-4 border-t pt-4">
                 <div class="font-semibold mb-3">Выдача авто</div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                        <label class="text-xs text-gray-500">Пробег при выдаче (км) *</label>
-                        <input type="number" wire:model.defer="pickup_mileage_start_km"
-                               class="mt-1 w-full rounded border-gray-300" />
-                        @error('pickup_mileage_start_km') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
+                <div class="space-y-4">
+                    @foreach($groupRentals as $item)
+                        <div class="rounded border p-3">
+                            <div class="text-sm font-semibold">
+                                {{ $item->car?->brand }} {{ $item->car?->model }}
+                                <span class="text-xs text-gray-500 font-mono">{{ $item->car?->plate_number ?? '—' }}</span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                                <div>
+                                    <label class="text-xs text-gray-500">Пробег при выдаче (км) *</label>
+                                    <input type="number" wire:model.defer="pickupData.{{ $item->id }}.mileage_start_km"
+                                           class="mt-1 w-full rounded border-gray-300" />
+                                    @error('pickupData.' . $item->id . '.mileage_start_km') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                                </div>
 
-                    <div>
-                        <label class="text-xs text-gray-500">Топливо при выдаче (%) *</label>
-                        <input type="number" min="0" max="100" wire:model.defer="pickup_fuel_start_percent"
-                               class="mt-1 w-full rounded border-gray-300" />
-                        @error('pickup_fuel_start_percent') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
+                                <div>
+                                    <label class="text-xs text-gray-500">Топливо при выдаче (%) *</label>
+                                    <input type="number" min="0" max="100" wire:model.defer="pickupData.{{ $item->id }}.fuel_start_percent"
+                                           class="mt-1 w-full rounded border-gray-300" />
+                                    @error('pickupData.' . $item->id . '.fuel_start_percent') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
 
                 <div class="mt-3 flex gap-2">
@@ -136,27 +158,43 @@
             <div class="mt-4 border-t pt-4">
                 <div class="font-semibold mb-3">Возврат авто</div>
 
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div>
-                        <label class="text-xs text-gray-500">Пробег при возврате (км) *</label>
-                        <input type="number" wire:model.defer="return_mileage_end_km"
-                               class="mt-1 w-full rounded border-gray-300" />
-                        @error('return_mileage_end_km') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
+                <div class="space-y-4">
+                    @foreach($groupRentals as $item)
+                        @php
+                            $pickupMileage = $item->mileage_start_km ?? '—';
+                            $pickupFuel = $item->fuel_start_percent ?? '—';
+                        @endphp
+                        <div class="rounded border p-3">
+                            <div class="text-sm font-semibold">
+                                {{ $item->car?->brand }} {{ $item->car?->model }}
+                                <span class="text-xs text-gray-500 font-mono">{{ $item->car?->plate_number ?? '—' }}</span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-2">
+                                <div>
+                                    <label class="text-xs text-gray-500">Пробег при возврате (км) *</label>
+                                    <input type="number" wire:model.defer="returnData.{{ $item->id }}.mileage_end_km"
+                                           placeholder="Выдача: {{ $pickupMileage }} км"
+                                           class="mt-1 w-full rounded border-gray-300" />
+                                    @error('returnData.' . $item->id . '.mileage_end_km') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                                </div>
 
-                    <div>
-                        <label class="text-xs text-gray-500">Топливо при возврате (%) *</label>
-                        <input type="number" min="0" max="100" wire:model.defer="return_fuel_end_percent"
-                               class="mt-1 w-full rounded border-gray-300" />
-                        @error('return_fuel_end_percent') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
+                                <div>
+                                    <label class="text-xs text-gray-500">Топливо при возврате (%) *</label>
+                                    <input type="number" min="0" max="100" wire:model.defer="returnData.{{ $item->id }}.fuel_end_percent"
+                                           placeholder="Выдача: {{ $pickupFuel }}%"
+                                           class="mt-1 w-full rounded border-gray-300" />
+                                    @error('returnData.' . $item->id . '.fuel_end_percent') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                                </div>
 
-                    <div>
-                        <label class="text-xs text-gray-500">Штрафы/доплаты (₽)</label>
-                        <input type="number" step="0.01" wire:model.defer="return_penalty_total"
-                               class="mt-1 w-full rounded border-gray-300" />
-                        @error('return_penalty_total') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
+                                <div>
+                                    <label class="text-xs text-gray-500">Штрафы/доплаты (₽)</label>
+                                    <input type="number" step="0.01" wire:model.defer="returnData.{{ $item->id }}.penalty_total"
+                                           class="mt-1 w-full rounded border-gray-300" />
+                                    @error('returnData.' . $item->id . '.penalty_total') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
 
                 <div class="mt-3 flex gap-2">
