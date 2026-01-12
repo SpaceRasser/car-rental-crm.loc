@@ -27,19 +27,19 @@ class Show extends Component
         $this->rentalId = $rentalId;
     }
 
-    public function getRentalProperty(): Rental
+    private function loadRental(): Rental
     {
         return Rental::with([
             'car',
             'client',
-            'extras', // ✅ добавили
+            'extras',
             'payments' => fn($q) => $q->orderByDesc('id'),
         ])->findOrFail($this->rentalId);
     }
 
     private function getGroupRentals(): \Illuminate\Support\Collection
     {
-        $rental = $this->rental;
+        $rental = $this->loadRental();
 
         if ($rental->group_uuid) {
             return Rental::query()
@@ -49,7 +49,7 @@ class Show extends Component
                 ->get();
         }
 
-        return collect([$rental->loadMissing(['car', 'client', 'extras', 'payments'])]);
+        return collect([$rental]);
     }
 
     private function calcExtrasTotal(Rental $rental, int $days): float
@@ -70,7 +70,7 @@ class Show extends Component
     // -------------------------
     public function setStatus(string $status): void
     {
-        $rental = $this->rental;
+        $rental = $this->loadRental();
         $groupRentals = $this->getGroupRentals();
 
         $allowed = ['new', 'confirmed', 'active', 'closed', 'cancelled', 'overdue'];
@@ -117,7 +117,6 @@ class Show extends Component
             }
         }
 
-        $rental->refresh();
         $this->dispatch('$refresh');
         session()->flash('rental_success', 'Статус обновлён.');
     }
@@ -127,7 +126,6 @@ class Show extends Component
     // -------------------------
     public function openPickup(): void
     {
-        $this->rental->refresh();
         $groupRentals = $this->getGroupRentals();
         $notConfirmed = $groupRentals->first(fn($item) => $item->status !== 'confirmed');
 
@@ -157,7 +155,6 @@ class Show extends Component
 
     public function confirmPickup(): void
     {
-        $this->rental->refresh();
         $groupRentals = $this->getGroupRentals();
         $notConfirmed = $groupRentals->first(fn($item) => $item->status !== 'confirmed');
 
@@ -200,7 +197,6 @@ class Show extends Component
 
     public function openReturn(): void
     {
-        $this->rental->refresh();
         $groupRentals = $this->getGroupRentals();
         $notActive = $groupRentals->first(fn($item) => !in_array($item->status, ['active', 'overdue'], true));
 
@@ -231,7 +227,6 @@ class Show extends Component
 
     public function confirmReturn(): void
     {
-        $this->rental->refresh();
         $groupRentals = $this->getGroupRentals();
         $notActive = $groupRentals->first(fn($item) => !in_array($item->status, ['active', 'overdue'], true));
 
@@ -297,7 +292,6 @@ class Show extends Component
     // -------------------------
     public function createPayment(): void
     {
-        $this->rental->refresh();
         $groupRentals = $this->getGroupRentals();
         $primaryRental = $groupRentals->first();
 
@@ -430,7 +424,7 @@ class Show extends Component
 
     public function render()
     {
-        $rental = $this->rental;
+        $rental = $this->loadRental();
         $groupRentals = $this->getGroupRentals();
         $primaryRental = $groupRentals->first();
 
