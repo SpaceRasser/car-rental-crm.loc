@@ -57,6 +57,7 @@
             <th>Год</th>
             <th>VIN</th>
             <th>Гос. номер</th>
+            <th>Получатель</th>
         </tr>
         @foreach(($groupRentals ?? collect([$rental])) as $item)
         <tr>
@@ -64,6 +65,15 @@
             <td>{{ $item->car?->year ?? '—' }}</td>
             <td>{{ $item->car?->vin ?? '—' }}</td>
             <td>{{ $item->car?->plate_number ?? '—' }}</td>
+            <td>
+                @if($item->is_trusted_person)
+                    Доверенное лицо: {{ $item->trusted_person_name ?? '—' }}<br>
+                    Тел.: {{ $item->trusted_person_phone ?? '—' }}<br>
+                    В/У: {{ $item->trusted_person_license_number ?? '—' }}
+                @else
+                    Клиент
+                @endif
+            </td>
         </tr>
         @endforeach
     </table>
