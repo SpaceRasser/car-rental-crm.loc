@@ -39,8 +39,8 @@ class Form extends Component
 
     public function mount(): void
     {
-        $this->starts_at = request('starts_at') ?: now()->addHour()->format('Y-m-d\TH:i');
-        $this->ends_at   = request('ends_at')   ?: now()->addDays(1)->addHour()->format('Y-m-d\TH:i');
+        $this->starts_at = request('starts_at') ?: '';
+        $this->ends_at   = request('ends_at')   ?: '';
 
         $this->client_id = request()->integer('client_id') ?: $this->client_id;
 
@@ -480,8 +480,34 @@ class Form extends Component
             ->limit(300)
             ->get();
 
-        $cars = Car::query()
+        $from = $this->parseDt($this->starts_at);
+        $to = $this->parseDt($this->ends_at);
+
+        if ($from && $to && $to->lessThanOrEqualTo($from)) {
+            $to = $from->copy()->addDay();
+        }
+
+        if ($from && !$to) {
+            $to = $from->copy()->addDay();
+        }
+
+        if ($to && !$from) {
+            $from = $to->copy()->subDay();
+        }
+
+        $carsQuery = Car::query()
             ->where('is_active', true)
+            ->where('status', 'available');
+
+        if ($from && $to) {
+            $carsQuery->whereDoesntHave('rentals', function ($query) use ($from, $to) {
+                $query->whereNotIn('status', ['cancelled', 'closed'])
+                    ->where('starts_at', '<', $to)
+                    ->where('ends_at', '>', $from);
+            });
+        }
+
+        $cars = $carsQuery
             ->orderBy('brand')
             ->orderBy('model')
             ->limit(300)

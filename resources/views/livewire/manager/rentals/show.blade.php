@@ -12,6 +12,39 @@
         </div>
         @endif
 
+        @php
+            $canContract = in_array($rental->status, ['confirmed', 'active', 'closed'], true);
+        @endphp
+
+        <div class="bg-white rounded shadow p-5 text-sm flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <span class="font-semibold">Статус:</span>
+                <span class="px-2 py-1 rounded text-xs border">
+                    {{ $statusLabels[$rental->status] ?? $rental->status }}
+                </span>
+            </div>
+
+            @if($canContract)
+                <div class="flex items-center gap-2">
+                    <a target="_blank"
+                       href="{{ route('manager.rentals.contract', $rental) }}"
+                       class="px-3 py-2 rounded bg-gray-800 text-white text-sm">
+                        Договор PDF
+                    </a>
+
+                    <a target="_blank"
+                       href="{{ route('manager.rentals.contract', [$rental, 'download' => 1]) }}"
+                       class="px-3 py-2 rounded border text-sm">
+                        Скачать
+                    </a>
+                </div>
+            @else
+                <div class="text-sm text-gray-500">
+                    Договор станет доступен после подтверждения аренды
+                </div>
+            @endif
+        </div>
+
         {{-- Основная инфа --}}
         <div class="bg-white rounded shadow p-5 text-sm space-y-2">
             <div class="flex items-center justify-between">

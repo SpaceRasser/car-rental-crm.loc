@@ -71,13 +71,12 @@ class Show extends Component
     public function setStatus(string $status): void
     {
         $rental = $this->rental;
+        $groupRentals = $this->getGroupRentals();
 
         $allowed = ['new', 'confirmed', 'active', 'closed', 'cancelled', 'overdue'];
         if (!in_array($status, $allowed, true)) {
             return;
         }
-
-        $current = $rental->status;
 
         $map = [
             'new'       => ['confirmed', 'cancelled'],
@@ -88,31 +87,38 @@ class Show extends Component
             'cancelled' => [],
         ];
 
-        if (!in_array($status, $map[$current] ?? [], true)) {
-            session()->flash('rental_error', "Нельзя сменить статус с '{$current}' на '{$status}'.");
-            return;
-        }
+        foreach ($groupRentals as $item) {
+            $current = $item->status;
 
-        $rental->update(['status' => $status]);
-
-        activity()
-            ->causedBy(auth()->user())
-            ->performedOn($rental)
-            ->event('status_changed')
-            ->withProperties(['from' => $current, 'to' => $status])
-            ->log("Статус аренды #{$rental->id}: {$current} → {$status}");
-
-
-        // синхронизация статуса авто
-        if ($rental->car) {
-            if ($status === 'active') {
-                $rental->car->update(['status' => 'rented']);
-            }
-            if (in_array($status, ['closed', 'cancelled'], true)) {
-                $rental->car->update(['status' => 'available']);
+            if (!in_array($status, $map[$current] ?? [], true)) {
+                session()->flash('rental_error', "Нельзя сменить статус с '{$current}' на '{$status}'.");
+                return;
             }
         }
 
+        foreach ($groupRentals as $item) {
+            $current = $item->status;
+            $item->update(['status' => $status]);
+
+            activity()
+                ->causedBy(auth()->user())
+                ->performedOn($item)
+                ->event('status_changed')
+                ->withProperties(['from' => $current, 'to' => $status])
+                ->log("Статус аренды #{$item->id}: {$current} → {$status}");
+
+            if ($item->car) {
+                if ($status === 'active') {
+                    $item->car->update(['status' => 'rented']);
+                }
+                if (in_array($status, ['closed', 'cancelled'], true)) {
+                    $item->car->update(['status' => 'available']);
+                }
+            }
+        }
+
+        $rental->refresh();
+        $this->dispatch('$refresh');
         session()->flash('rental_success', 'Статус обновлён.');
     }
 
@@ -121,6 +127,7 @@ class Show extends Component
     // -------------------------
     public function openPickup(): void
     {
+        $this->rental->refresh();
         $groupRentals = $this->getGroupRentals();
         $notConfirmed = $groupRentals->first(fn($item) => $item->status !== 'confirmed');
 
@@ -150,6 +157,7 @@ class Show extends Component
 
     public function confirmPickup(): void
     {
+        $this->rental->refresh();
         $groupRentals = $this->getGroupRentals();
         $notConfirmed = $groupRentals->first(fn($item) => $item->status !== 'confirmed');
 
@@ -186,11 +194,13 @@ class Show extends Component
 
         $this->showPickupForm = false;
 
+        $this->dispatch('$refresh');
         session()->flash('rental_success', 'Авто выдано. Аренда активирована.');
     }
 
     public function openReturn(): void
     {
+        $this->rental->refresh();
         $groupRentals = $this->getGroupRentals();
         $notActive = $groupRentals->first(fn($item) => !in_array($item->status, ['active', 'overdue'], true));
 
@@ -221,6 +231,7 @@ class Show extends Component
 
     public function confirmReturn(): void
     {
+        $this->rental->refresh();
         $groupRentals = $this->getGroupRentals();
         $notActive = $groupRentals->first(fn($item) => !in_array($item->status, ['active', 'overdue'], true));
 
@@ -277,6 +288,7 @@ class Show extends Component
 
         $this->showReturnForm = false;
 
+        $this->dispatch('$refresh');
         session()->flash('rental_success', 'Аренда закрыта. Возврат зафиксирован.');
     }
 
@@ -285,6 +297,7 @@ class Show extends Component
     // -------------------------
     public function createPayment(): void
     {
+        $this->rental->refresh();
         $groupRentals = $this->getGroupRentals();
         $primaryRental = $groupRentals->first();
 
@@ -349,6 +362,7 @@ class Show extends Component
             'created_by' => auth()->id(),
         ]);
 
+        $this->dispatch('$refresh');
         session()->flash('payment_success', 'Платёж создан (pending).');
     }
 
@@ -381,6 +395,7 @@ class Show extends Component
             $rental->update(['status' => 'confirmed']);
         }
 
+        $this->dispatch('$refresh');
         session()->flash('payment_success', 'Оплата успешно симулирована.');
     }
 
@@ -407,6 +422,7 @@ class Show extends Component
             ->log("Платёж #{$payment->id} помечен как FAILED");
 
 
+        $this->dispatch('$refresh');
         session()->flash('payment_success', 'Платёж помечен как failed.');
     }
 
