@@ -77,6 +77,24 @@ class Client extends Model
         return $this->hasMany(TestDrive::class, 'client_id');
     }
 
+    public function cancelActiveRentals(?string $reason = null): void
+    {
+        $rentals = $this->rentals()
+            ->whereNotIn('status', ['cancelled', 'closed'])
+            ->get();
+
+        foreach ($rentals as $rental) {
+            $rental->update([
+                'status' => 'cancelled',
+                'cancel_reason' => $reason,
+            ]);
+
+            if ($rental->car) {
+                $rental->car->update(['status' => 'available']);
+            }
+        }
+    }
+
     public function missingRequiredProfileFields(): array
     {
         $fields = [

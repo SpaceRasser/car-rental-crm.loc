@@ -85,9 +85,6 @@ class ProfileController extends Controller
             'driver_license_issued_at' => ['required', 'date'],
             'driver_license_expires_at' => ['required', 'date', 'after_or_equal:driver_license_issued_at'],
             'birth_date' => ['required', 'date'],
-            'trusted_person_name' => ['nullable', 'string', 'max:120'],
-            'trusted_person_phone' => ['nullable', 'string', 'max:30'],
-            'trusted_person_license_number' => ['nullable', 'string', 'max:50'],
         ]);
 
         $user = $request->user();

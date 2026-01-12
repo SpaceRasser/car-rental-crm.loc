@@ -68,6 +68,11 @@ class Index extends Component
         }
 
         $u->update(['is_active' => !$u->is_active]);
+
+        if (! $u->is_active && $u->client) {
+            $u->client->cancelActiveRentals('Пользователь отключён администратором.');
+        }
+
         session()->flash('ok', $u->is_active ? 'Пользователь активирован.' : 'Пользователь отключён.');
     }
 
