@@ -118,9 +118,15 @@
 
             <div class="flex flex-wrap gap-2">
                 @if($rental->status === 'new')
-                <button type="button" wire:click="setStatus('confirmed')" class="px-3 py-2 rounded bg-gray-800 text-white text-sm">
+                <button type="button" wire:click="setStatus('confirmed')" @disabled($remaining > 0)
+                        class="px-3 py-2 rounded bg-gray-800 text-white text-sm {{ $remaining > 0 ? 'opacity-50 cursor-not-allowed' : '' }}">
                     Подтвердить
                 </button>
+                @if($remaining > 0)
+                    <div class="text-xs text-gray-500 flex items-center">
+                        Для подтверждения необходимо оплатить аренду
+                    </div>
+                @endif
                 <button type="button" wire:click="setStatus('cancelled')" class="px-3 py-2 rounded border text-sm">
                     Отменить
                 </button>
