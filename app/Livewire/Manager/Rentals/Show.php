@@ -390,9 +390,11 @@ class Show extends Component
             ->log("Платёж #{$payment->id} помечен как PAID");
 
 
-        $rental = $this->rental;
-        if ($rental->status === 'new') {
-            $rental->update(['status' => 'confirmed']);
+        $groupRentals = $this->getGroupRentals();
+        foreach ($groupRentals as $item) {
+            if ($item->status === 'new') {
+                $item->update(['status' => 'confirmed']);
+            }
         }
 
         $this->dispatch('$refresh');
