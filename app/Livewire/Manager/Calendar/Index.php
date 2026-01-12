@@ -116,6 +116,7 @@ class Index extends Component
         if ($this->showTestDrives) {
             $testDrives = TestDrive::query()
                 ->with(['client', 'car'])
+                ->whereIn('status', ['new', 'confirmed'])
                 ->whereBetween('scheduled_at', [$rangeStart, $rangeEnd])
                 ->orderBy('scheduled_at')
                 ->get();

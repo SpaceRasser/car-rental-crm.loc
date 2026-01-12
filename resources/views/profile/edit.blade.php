@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Profile') }}
+            Профиль
         </h2>
     </x-slot>
 
@@ -89,28 +89,6 @@
                             <label class="text-xs text-gray-500">Права действуют до *</label>
                             <input type="date" name="driver_license_expires_at" value="{{ old('driver_license_expires_at', optional($client?->driver_license_expires_at)->format('Y-m-d')) }}" class="mt-1 w-full rounded border-gray-300" />
                             @error('driver_license_expires_at') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div class="md:col-span-2 border-t pt-3">
-                            <div class="text-sm font-semibold text-gray-700">Доверенное лицо</div>
-                        </div>
-
-                        <div>
-                            <label class="text-xs text-gray-500">ФИО</label>
-                            <input type="text" name="trusted_person_name" value="{{ old('trusted_person_name', $client->trusted_person_name ?? '') }}" class="mt-1 w-full rounded border-gray-300" />
-                            @error('trusted_person_name') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div>
-                            <label class="text-xs text-gray-500">Телефон</label>
-                            <input type="text" name="trusted_person_phone" data-mask="phone" value="{{ old('trusted_person_phone', $client->trusted_person_phone ?? '') }}" class="mt-1 w-full rounded border-gray-300" />
-                            @error('trusted_person_phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div>
-                            <label class="text-xs text-gray-500">№ водительского удостоверения</label>
-                            <input type="text" name="trusted_person_license_number" data-mask="license" value="{{ old('trusted_person_license_number', $client->trusted_person_license_number ?? '') }}" class="mt-1 w-full rounded border-gray-300" />
-                            @error('trusted_person_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                         </div>
 
                         <div class="md:col-span-2">

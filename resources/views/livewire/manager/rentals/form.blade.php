@@ -31,43 +31,80 @@
                     @error('client_id') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                 </div>
 
-                <div>
-                    <label class="text-sm text-gray-600">Автомобиль *</label>
-                    <input
-                        type="text"
-                        placeholder="Поиск автомобиля..."
-                        data-select-target="rental-car-select"
-                        class="mt-1 w-full rounded border-gray-300 text-sm"
-                    />
-                    <select id="rental-car-select" wire:model.live="car_id" class="mt-2 w-full rounded border-gray-300">
-                        <option value="">— выбрать —</option>
-                        @foreach($cars as $car)
-                        <option value="{{ $car->id }}">
-                            {{ $car->brand }} {{ $car->model }} • {{ $car->plate_number }}
-                        </option>
-                        @endforeach
-                    </select>
-                    @error('car_id') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                </div>
+                <div class="md:col-span-2 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-600">Автомобили *</div>
+                        <button type="button" wire:click="addCarBlock" class="px-3 py-1.5 rounded border text-xs">
+                            Добавить еще
+                        </button>
+                    </div>
 
-                <div>
-                    <label class="text-sm text-gray-600">Доп. автомобили</label>
-                    <input
-                        type="text"
-                        placeholder="Поиск автомобиля..."
-                        data-select-target="rental-additional-cars-select"
-                        class="mt-1 w-full rounded border-gray-300 text-sm"
-                    />
-                    <select id="rental-additional-cars-select" wire:model.defer="additional_car_ids" multiple class="mt-2 w-full rounded border-gray-300 h-32">
-                        @foreach($cars as $car)
-                        <option value="{{ $car->id }}">
-                            {{ $car->brand }} {{ $car->model }} • {{ $car->plate_number }}
-                        </option>
+                    @error('carBlocks') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
+
+                    <div class="space-y-4">
+                        @foreach($carBlocks as $index => $block)
+                        @php $isTrusted = $block['use_trusted_person'] ?? false; @endphp
+                        <div class="rounded border p-4 space-y-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex-1">
+                                    <label class="text-xs text-gray-500">Автомобиль</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Поиск автомобиля..."
+                                        data-select-target="rental-car-select-{{ $index }}"
+                                        class="mt-1 w-full rounded border-gray-300 text-sm"
+                                    />
+                                    <select id="rental-car-select-{{ $index }}"
+                                            wire:model.live="carBlocks.{{ $index }}.car_id"
+                                            class="mt-2 w-full rounded border-gray-300">
+                                        <option value="">— выбрать —</option>
+                                        @foreach($cars as $car)
+                                        <option value="{{ $car->id }}">
+                                            {{ $car->brand }} {{ $car->model }} • {{ $car->plate_number }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                    @error('carBlocks.' . $index . '.car_id') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                                </div>
+
+                                @if($index > 0)
+                                <button type="button" wire:click="removeCarBlock({{ $index }})" class="px-3 py-1.5 rounded border text-xs">
+                                    Удалить
+                                </button>
+                                @endif
+                            </div>
+
+                            <div class="bg-gray-50 rounded p-3 text-sm space-y-2">
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="checkbox" wire:model.live="carBlocks.{{ $index }}.use_trusted_person" class="rounded border-gray-300" />
+                                    Доверенное лицо
+                                </label>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div>
+                                        <label class="text-xs text-gray-500">ФИО</label>
+                                        <input wire:model.defer="carBlocks.{{ $index }}.trusted_person_name"
+                                               @disabled(!$isTrusted)
+                                               class="mt-1 w-full rounded border-gray-300 {{ $isTrusted ? '' : 'bg-gray-100 cursor-not-allowed' }}" />
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-gray-500">Телефон</label>
+                                        <input wire:model.defer="carBlocks.{{ $index }}.trusted_person_phone"
+                                               data-mask="phone"
+                                               @disabled(!$isTrusted)
+                                               class="mt-1 w-full rounded border-gray-300 {{ $isTrusted ? '' : 'bg-gray-100 cursor-not-allowed' }}" />
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-gray-500">№ водительского удостоверения</label>
+                                        <input wire:model.defer="carBlocks.{{ $index }}.trusted_person_license_number"
+                                               data-mask="license"
+                                               @disabled(!$isTrusted)
+                                               class="mt-1 w-full rounded border-gray-300 {{ $isTrusted ? '' : 'bg-gray-100 cursor-not-allowed' }}" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         @endforeach
-                    </select>
-                    <div class="text-xs text-gray-500 mt-1">Используйте Ctrl/Cmd для выбора нескольких.</div>
-                    @error('additional_car_ids') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    @error('additional_car_ids.*') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
                 </div>
 
                 <div>
@@ -129,12 +166,16 @@
 
                     <div class="space-y-2">
                         @forelse($extras as $e)
-                        @php $checked = isset($selectedExtras[$e->id]); @endphp
+                        @php
+                            $checked = isset($selectedExtras[$e->id]);
+                            $mandatory = in_array($e->id, $mandatoryExtraIds ?? [], true);
+                        @endphp
 
                         <div class="flex items-center justify-between gap-3 border rounded bg-white p-3">
                             <label class="flex items-center gap-2 text-sm">
                                 <input type="checkbox"
                                        @checked($checked)
+                                       @disabled($mandatory)
                                        wire:click="toggleExtra({{ $e->id }})"
                                        class="rounded border-gray-300" />
 
@@ -144,6 +185,9 @@
                             • {{ $e->pricing_type === 'per_day' ? 'за день' : 'фикс' }}
                             • {{ number_format((float)$e->price, 2, '.', ' ') }} ₽
                         </span>
+                        @if($mandatory)
+                            <span class="ml-2 text-xs text-red-600">обязательно</span>
+                        @endif
                     </span>
                             </label>
 
@@ -152,6 +196,7 @@
                                 <span class="text-xs text-gray-500">Кол-во:</span>
                                 <input type="number" min="1" step="1"
                                        wire:model.live="selectedExtras.{{ $e->id }}"
+                                       @disabled($mandatory)
                                        class="w-20 rounded border-gray-300 text-sm" />
                             </div>
                             @endif
@@ -188,11 +233,11 @@
                 </div>
             </div>
 
-            @if(!empty($additionalCarsSummary))
+            @if(!empty($carSummaries))
             <div class="bg-white rounded border p-4 text-sm">
                 <div class="font-semibold mb-2">Стоимость по автомобилям</div>
                 <div class="space-y-2">
-                    @foreach($additionalCarsSummary as $summary)
+                    @foreach($carSummaries as $summary)
                         <div class="flex items-center justify-between">
                             <div>{{ $summary['label'] }}</div>
                             <div class="text-xs text-gray-600">
@@ -204,58 +249,6 @@
                 </div>
             </div>
             @endif
-
-            <div class="bg-gray-50 rounded p-4 text-sm space-y-3">
-                <label class="inline-flex items-center gap-2">
-                    <input type="checkbox" wire:model.defer="use_trusted_person" class="rounded border-gray-300" />
-                    Доверенное лицо для аренды
-                </label>
-                @if($use_trusted_person)
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                        <label class="text-xs text-gray-500">ФИО</label>
-                        <input wire:model.defer="trusted_person_name" class="mt-1 w-full rounded border-gray-300" />
-                        @error('trusted_person_name') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500">Телефон</label>
-                        <input wire:model.defer="trusted_person_phone" data-mask="phone" class="mt-1 w-full rounded border-gray-300" />
-                        @error('trusted_person_phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500">№ водительского удостоверения</label>
-                        <input wire:model.defer="trusted_person_license_number" data-mask="license" class="mt-1 w-full rounded border-gray-300" />
-                        @error('trusted_person_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
-                </div>
-                @endif
-            </div>
-
-            <div class="bg-gray-50 rounded p-4 text-sm space-y-3">
-                <label class="inline-flex items-center gap-2">
-                    <input type="checkbox" wire:model.defer="use_trusted_person" class="rounded border-gray-300" />
-                    Доверенное лицо для аренды
-                </label>
-                @if($use_trusted_person)
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                        <label class="text-xs text-gray-500">ФИО</label>
-                        <input wire:model.defer="trusted_person_name" class="mt-1 w-full rounded border-gray-300" />
-                        @error('trusted_person_name') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500">Телефон</label>
-                        <input wire:model.defer="trusted_person_phone" data-mask="phone" class="mt-1 w-full rounded border-gray-300" />
-                        @error('trusted_person_phone') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500">№ водительского удостоверения</label>
-                        <input wire:model.defer="trusted_person_license_number" data-mask="license" class="mt-1 w-full rounded border-gray-300" />
-                        @error('trusted_person_license_number') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
-                </div>
-                @endif
-            </div>
 
             <div>
                 <label class="text-sm text-gray-600">Комментарий</label>

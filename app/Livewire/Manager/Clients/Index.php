@@ -38,6 +38,30 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function toggleBlocked(int $clientId): void
+    {
+        /** @var Client $client */
+        $client = Client::query()->findOrFail($clientId);
+        $isBlocked = $client->reliability_status === 'blocked';
+
+        $client->update([
+            'reliability_status' => $isBlocked ? 'normal' : 'blocked',
+        ]);
+
+        if (! $isBlocked) {
+            $client->cancelActiveRentals('Клиент заблокирован менеджером.');
+            if ($client->user) {
+                $client->user->update(['is_active' => false]);
+            }
+        }
+
+        if ($isBlocked && $client->user) {
+            $client->user->update(['is_active' => true]);
+        }
+
+        session()->flash('ok', $isBlocked ? 'Клиент разблокирован.' : 'Клиент заблокирован.');
+    }
+
     public function render()
     {
         $clients = Client::query()

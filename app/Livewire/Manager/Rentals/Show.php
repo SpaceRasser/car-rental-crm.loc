@@ -17,13 +17,10 @@ class Show extends Component
     public bool $showReturnForm = false;
 
     // Выдача
-    public ?int $pickup_mileage_start_km = null;
-    public ?int $pickup_fuel_start_percent = null;
+    public array $pickupData = [];
 
     // Возврат
-    public ?int $return_mileage_end_km = null;
-    public ?int $return_fuel_end_percent = null;
-    public string $return_penalty_total = '0.00';
+    public array $returnData = [];
 
     public function mount(int $rentalId): void
     {
@@ -40,6 +37,33 @@ class Show extends Component
         ])->findOrFail($this->rentalId);
     }
 
+    private function getGroupRentals(): \Illuminate\Support\Collection
+    {
+        $rental = $this->rental;
+
+        if ($rental->group_uuid) {
+            return Rental::query()
+                ->with(['car', 'client', 'extras', 'payments' => fn($q) => $q->orderByDesc('id')])
+                ->where('group_uuid', $rental->group_uuid)
+                ->orderBy('id')
+                ->get();
+        }
+
+        return collect([$rental->loadMissing(['car', 'client', 'extras', 'payments'])]);
+    }
+
+    private function calcExtrasTotal(Rental $rental, int $days): float
+    {
+        return (float) $rental->extras->sum(function ($e) use ($days) {
+            $type  = (string) ($e->pivot->pricing_type ?? 'fixed');
+            $price = (float) ($e->pivot->price ?? 0);
+            $qty   = (int) ($e->pivot->qty ?? 1);
+            $mult = $type === 'per_day' ? $days : 1;
+
+            return round($price * $qty * $mult, 2);
+        });
+    }
+
 
     // -------------------------
     // Статусы (как было)
@@ -47,13 +71,12 @@ class Show extends Component
     public function setStatus(string $status): void
     {
         $rental = $this->rental;
+        $groupRentals = $this->getGroupRentals();
 
         $allowed = ['new', 'confirmed', 'active', 'closed', 'cancelled', 'overdue'];
         if (!in_array($status, $allowed, true)) {
             return;
         }
-
-        $current = $rental->status;
 
         $map = [
             'new'       => ['confirmed', 'cancelled'],
@@ -64,31 +87,38 @@ class Show extends Component
             'cancelled' => [],
         ];
 
-        if (!in_array($status, $map[$current] ?? [], true)) {
-            session()->flash('rental_error', "Нельзя сменить статус с '{$current}' на '{$status}'.");
-            return;
-        }
+        foreach ($groupRentals as $item) {
+            $current = $item->status;
 
-        $rental->update(['status' => $status]);
-
-        activity()
-            ->causedBy(auth()->user())
-            ->performedOn($rental)
-            ->event('status_changed')
-            ->withProperties(['from' => $current, 'to' => $status])
-            ->log("Статус аренды #{$rental->id}: {$current} → {$status}");
-
-
-        // синхронизация статуса авто
-        if ($rental->car) {
-            if ($status === 'active') {
-                $rental->car->update(['status' => 'rented']);
-            }
-            if (in_array($status, ['closed', 'cancelled'], true)) {
-                $rental->car->update(['status' => 'available']);
+            if (!in_array($status, $map[$current] ?? [], true)) {
+                session()->flash('rental_error', "Нельзя сменить статус с '{$current}' на '{$status}'.");
+                return;
             }
         }
 
+        foreach ($groupRentals as $item) {
+            $current = $item->status;
+            $item->update(['status' => $status]);
+
+            activity()
+                ->causedBy(auth()->user())
+                ->performedOn($item)
+                ->event('status_changed')
+                ->withProperties(['from' => $current, 'to' => $status])
+                ->log("Статус аренды #{$item->id}: {$current} → {$status}");
+
+            if ($item->car) {
+                if ($status === 'active') {
+                    $item->car->update(['status' => 'rented']);
+                }
+                if (in_array($status, ['closed', 'cancelled'], true)) {
+                    $item->car->update(['status' => 'available']);
+                }
+            }
+        }
+
+        $rental->refresh();
+        $this->dispatch('$refresh');
         session()->flash('rental_success', 'Статус обновлён.');
     }
 
@@ -97,9 +127,11 @@ class Show extends Component
     // -------------------------
     public function openPickup(): void
     {
-        $rental = $this->rental;
+        $this->rental->refresh();
+        $groupRentals = $this->getGroupRentals();
+        $notConfirmed = $groupRentals->first(fn($item) => $item->status !== 'confirmed');
 
-        if ($rental->status !== 'confirmed') {
+        if ($notConfirmed) {
             session()->flash('rental_error', 'Выдача доступна только для статуса "Подтверждена".');
             return;
         }
@@ -108,9 +140,13 @@ class Show extends Component
         $this->showReturnForm = false;
         $this->showPickupForm = true;
 
-        // если уже есть данные — подставим
-        $this->pickup_mileage_start_km = $rental->mileage_start_km;
-        $this->pickup_fuel_start_percent = $rental->fuel_start_percent;
+        $this->pickupData = [];
+        foreach ($groupRentals as $item) {
+            $this->pickupData[$item->id] = [
+                'mileage_start_km' => $item->mileage_start_km,
+                'fuel_start_percent' => $item->fuel_start_percent,
+            ];
+        }
     }
 
     public function cancelPickup(): void
@@ -121,42 +157,54 @@ class Show extends Component
 
     public function confirmPickup(): void
     {
-        $rental = $this->rental;
+        $this->rental->refresh();
+        $groupRentals = $this->getGroupRentals();
+        $notConfirmed = $groupRentals->first(fn($item) => $item->status !== 'confirmed');
 
-        if ($rental->status !== 'confirmed') {
+        if ($notConfirmed) {
             session()->flash('rental_error', 'Выдача доступна только для статуса "Подтверждена".');
             return;
         }
 
         $data = $this->validate([
-            'pickup_mileage_start_km' => ['required', 'integer', 'min:0'],
-            'pickup_fuel_start_percent' => ['required', 'integer', 'min:0', 'max:100'],
+            'pickupData.*.mileage_start_km' => ['required', 'integer', 'min:0'],
+            'pickupData.*.fuel_start_percent' => ['required', 'integer', 'min:0', 'max:100'],
         ], [], [
-            'pickup_mileage_start_km' => 'Пробег при выдаче',
-            'pickup_fuel_start_percent' => 'Топливо при выдаче',
+            'pickupData.*.mileage_start_km' => 'Пробег при выдаче',
+            'pickupData.*.fuel_start_percent' => 'Топливо при выдаче',
         ]);
 
-        $rental->update([
-            'picked_up_at' => now(),
-            'mileage_start_km' => (int) $data['pickup_mileage_start_km'],
-            'fuel_start_percent' => (int) $data['pickup_fuel_start_percent'],
-            'status' => 'active',
-        ]);
+        foreach ($groupRentals as $item) {
+            $pickup = $data['pickupData'][$item->id] ?? null;
+            if (! $pickup) {
+                continue;
+            }
 
-        if ($rental->car) {
-            $rental->car->update(['status' => 'rented']);
+            $item->update([
+                'picked_up_at' => now(),
+                'mileage_start_km' => (int) $pickup['mileage_start_km'],
+                'fuel_start_percent' => (int) $pickup['fuel_start_percent'],
+                'status' => 'active',
+            ]);
+
+            if ($item->car) {
+                $item->car->update(['status' => 'rented']);
+            }
         }
 
         $this->showPickupForm = false;
 
+        $this->dispatch('$refresh');
         session()->flash('rental_success', 'Авто выдано. Аренда активирована.');
     }
 
     public function openReturn(): void
     {
-        $rental = $this->rental;
+        $this->rental->refresh();
+        $groupRentals = $this->getGroupRentals();
+        $notActive = $groupRentals->first(fn($item) => !in_array($item->status, ['active', 'overdue'], true));
 
-        if (!in_array($rental->status, ['active', 'overdue'], true)) {
+        if ($notActive) {
             session()->flash('rental_error', 'Возврат доступен только для "Активна/Просрочена".');
             return;
         }
@@ -165,9 +213,14 @@ class Show extends Component
         $this->showPickupForm = false;
         $this->showReturnForm = true;
 
-        $this->return_mileage_end_km = $rental->mileage_end_km;
-        $this->return_fuel_end_percent = $rental->fuel_end_percent;
-        $this->return_penalty_total = (string) ($rental->penalty_total ?? '0.00');
+        $this->returnData = [];
+        foreach ($groupRentals as $item) {
+            $this->returnData[$item->id] = [
+                'mileage_end_km' => $item->mileage_end_km,
+                'fuel_end_percent' => $item->fuel_end_percent,
+                'penalty_total' => (string) ($item->penalty_total ?? '0.00'),
+            ];
+        }
     }
 
     public function cancelReturn(): void
@@ -178,53 +231,64 @@ class Show extends Component
 
     public function confirmReturn(): void
     {
-        $rental = $this->rental;
+        $this->rental->refresh();
+        $groupRentals = $this->getGroupRentals();
+        $notActive = $groupRentals->first(fn($item) => !in_array($item->status, ['active', 'overdue'], true));
 
-        if (!in_array($rental->status, ['active', 'overdue'], true)) {
+        if ($notActive) {
             session()->flash('rental_error', 'Возврат доступен только для "Активна/Просрочена".');
             return;
         }
 
         $data = $this->validate([
-            'return_mileage_end_km' => ['required', 'integer', 'min:0'],
-            'return_fuel_end_percent' => ['required', 'integer', 'min:0', 'max:100'],
-            'return_penalty_total' => ['nullable', 'numeric', 'min:0'],
+            'returnData.*.mileage_end_km' => ['required', 'integer', 'min:0'],
+            'returnData.*.fuel_end_percent' => ['required', 'integer', 'min:0', 'max:100'],
+            'returnData.*.penalty_total' => ['nullable', 'numeric', 'min:0'],
         ], [], [
-            'return_mileage_end_km' => 'Пробег при возврате',
-            'return_fuel_end_percent' => 'Топливо при возврате',
-            'return_penalty_total' => 'Штрафы/доплаты',
+            'returnData.*.mileage_end_km' => 'Пробег при возврате',
+            'returnData.*.fuel_end_percent' => 'Топливо при возврате',
+            'returnData.*.penalty_total' => 'Штрафы/доплаты',
         ]);
 
-        $mileageEnd = (int) $data['return_mileage_end_km'];
-        $mileageStart = (int) ($rental->mileage_start_km ?? 0);
+        foreach ($groupRentals as $item) {
+            $return = $data['returnData'][$item->id] ?? null;
+            if (! $return) {
+                continue;
+            }
 
-        if ($rental->mileage_start_km !== null && $mileageEnd < $mileageStart) {
-            $this->addError('return_mileage_end_km', 'Пробег при возврате не может быть меньше пробега при выдаче.');
-            return;
-        }
+            $mileageEnd = (int) $return['mileage_end_km'];
+            $mileageStart = (int) ($item->mileage_start_km ?? 0);
 
-        $penalty = round((float) ($data['return_penalty_total'] ?? 0), 2);
+            if ($item->mileage_start_km !== null && $mileageEnd < $mileageStart) {
+                $this->addError('returnData.'.$item->id.'.mileage_end_km', 'Пробег при возврате не может быть меньше пробега при выдаче.');
+                return;
+            }
 
-        // пересчёт grand_total: base - discount + penalty
-        $base = (float) ($rental->base_total ?? 0);
-        $discount = (float) ($rental->discount_total ?? 0);
-        $grand = round(max(0, $base - $discount + $penalty), 2);
+            $penalty = round((float) ($return['penalty_total'] ?? 0), 2);
+            $days = max(1, (int) ($item->days_count ?? 1));
+            $extrasTotal = $this->calcExtrasTotal($item, $days);
 
-        $rental->update([
-            'returned_at' => now(),
-            'mileage_end_km' => $mileageEnd,
-            'fuel_end_percent' => (int) $data['return_fuel_end_percent'],
-            'penalty_total' => $penalty,
-            'grand_total' => $grand,
-            'status' => 'closed',
-        ]);
+            $base = (float) ($item->base_total ?? 0);
+            $discount = (float) ($item->discount_total ?? 0);
+            $grand = round(max(0, $base + $extrasTotal - $discount + $penalty), 2);
 
-        if ($rental->car) {
-            $rental->car->update(['status' => 'available']);
+            $item->update([
+                'returned_at' => now(),
+                'mileage_end_km' => $mileageEnd,
+                'fuel_end_percent' => (int) $return['fuel_end_percent'],
+                'penalty_total' => $penalty,
+                'grand_total' => $grand,
+                'status' => 'closed',
+            ]);
+
+            if ($item->car) {
+                $item->car->update(['status' => 'available']);
+            }
         }
 
         $this->showReturnForm = false;
 
+        $this->dispatch('$refresh');
         session()->flash('rental_success', 'Аренда закрыта. Возврат зафиксирован.');
     }
 
@@ -233,26 +297,28 @@ class Show extends Component
     // -------------------------
     public function createPayment(): void
     {
-        $rental = $this->rental;
+        $this->rental->refresh();
+        $groupRentals = $this->getGroupRentals();
+        $primaryRental = $groupRentals->first();
 
         // ✅ дни: берем слепок, иначе считаем как в Form (ceil по суткам)
-        $days = (int) ($rental->days_count ?? 0);
-        if ($days <= 0 && $rental->starts_at && $rental->ends_at) {
-            $from = \Carbon\Carbon::parse($rental->starts_at);
-            $to   = \Carbon\Carbon::parse($rental->ends_at);
+        $days = (int) ($primaryRental?->days_count ?? 0);
+        if ($days <= 0 && $primaryRental?->starts_at && $primaryRental?->ends_at) {
+            $from = \Carbon\Carbon::parse($primaryRental->starts_at);
+            $to   = \Carbon\Carbon::parse($primaryRental->ends_at);
 
             $minutes = max(1, $from->diffInMinutes($to));
             $days = max(1, (int) ceil($minutes / 1440));
         }
         if ($days <= 0) $days = 1;
 
-        $base     = (float) ($rental->base_total ?? 0);
-        $discount = (float) ($rental->discount_total ?? 0);
-        $penalty  = (float) ($rental->penalty_total ?? 0);
-        $deposit  = (float) ($rental->deposit_amount ?? 0);
+        $base     = (float) $groupRentals->sum(fn($item) => (float) ($item->base_total ?? 0));
+        $discount = (float) $groupRentals->sum(fn($item) => (float) ($item->discount_total ?? 0));
+        $penalty  = (float) $groupRentals->sum(fn($item) => (float) ($item->penalty_total ?? 0));
+        $deposit  = (float) $groupRentals->sum(fn($item) => (float) ($item->deposit_amount ?? 0));
 
         // ✅ услуги из pivot rental_extras (fixed/per_day, qty)
-        $extrasTotal = (float) $rental->extras->sum(function ($e) use ($days) {
+        $extrasTotal = (float) ($primaryRental?->extras ?? collect())->sum(function ($e) use ($days) {
             $type  = (string) ($e->pivot->pricing_type ?? 'fixed');
             $price = (float) ($e->pivot->price ?? 0);
             $qty   = (int)   ($e->pivot->qty ?? 1);
@@ -269,7 +335,8 @@ class Show extends Component
         $total = round($rentTotal + $deposit, 2);
 
         // ✅ сколько уже реально оплачено
-        $paid = (float) $rental->payments()
+        $paid = (float) $groupRentals
+            ->flatMap(fn ($item) => $item->payments)
             ->where('status', 'paid')
             ->sum('amount');
 
@@ -281,7 +348,7 @@ class Show extends Component
         }
 
         \App\Models\Payment::create([
-            'rental_id' => $rental->id,
+            'rental_id' => $primaryRental?->id ?? $this->rentalId,
             'amount' => $remaining,
             'currency' => 'RUB',
             'provider' => 'fake',
@@ -295,6 +362,7 @@ class Show extends Component
             'created_by' => auth()->id(),
         ]);
 
+        $this->dispatch('$refresh');
         session()->flash('payment_success', 'Платёж создан (pending).');
     }
 
@@ -322,11 +390,14 @@ class Show extends Component
             ->log("Платёж #{$payment->id} помечен как PAID");
 
 
-        $rental = $this->rental;
-        if ($rental->status === 'new') {
-            $rental->update(['status' => 'confirmed']);
+        $groupRentals = $this->getGroupRentals();
+        foreach ($groupRentals as $item) {
+            if ($item->status === 'new') {
+                $item->update(['status' => 'confirmed']);
+            }
         }
 
+        $this->dispatch('$refresh');
         session()->flash('payment_success', 'Оплата успешно симулирована.');
     }
 
@@ -353,30 +424,33 @@ class Show extends Component
             ->log("Платёж #{$payment->id} помечен как FAILED");
 
 
+        $this->dispatch('$refresh');
         session()->flash('payment_success', 'Платёж помечен как failed.');
     }
 
     public function render()
     {
         $rental = $this->rental;
+        $groupRentals = $this->getGroupRentals();
+        $primaryRental = $groupRentals->first();
 
         // ✅ дни: берем слепок, иначе считаем как в Form (ceil по суткам)
-        $days = (int) ($rental->days_count ?? 0);
-        if ($days <= 0 && $rental->starts_at && $rental->ends_at) {
-            $from = \Carbon\Carbon::parse($rental->starts_at);
-            $to   = \Carbon\Carbon::parse($rental->ends_at);
+        $days = (int) ($primaryRental?->days_count ?? 0);
+        if ($days <= 0 && $primaryRental?->starts_at && $primaryRental?->ends_at) {
+            $from = \Carbon\Carbon::parse($primaryRental->starts_at);
+            $to   = \Carbon\Carbon::parse($primaryRental->ends_at);
 
             $minutes = max(1, $from->diffInMinutes($to));
             $days = max(1, (int) ceil($minutes / 1440));
         }
         if ($days <= 0) $days = 1;
 
-        $base    = (float) ($rental->base_total ?? 0);
-        $discount = (float) ($rental->discount_total ?? 0);
-        $penalty  = (float) ($rental->penalty_total ?? 0);
+        $base = (float) $groupRentals->sum(fn($item) => (float) ($item->base_total ?? 0));
+        $discount = (float) $groupRentals->sum(fn($item) => (float) ($item->discount_total ?? 0));
+        $penalty  = (float) $groupRentals->sum(fn($item) => (float) ($item->penalty_total ?? 0));
 
         // ✅ строки услуг + сумма услуг
-        $extrasLines = $rental->extras->map(function ($e) use ($days) {
+        $extrasLines = ($primaryRental?->extras ?? collect())->map(function ($e) use ($days) {
             $type = (string) ($e->pivot->pricing_type ?? 'fixed'); // fixed/per_day
             $price = (float) ($e->pivot->price ?? 0);
             $qty = (int) ($e->pivot->qty ?? 1);
@@ -400,10 +474,13 @@ class Show extends Component
         // ✅ аренда итого (база + услуги - скидка + штрафы)
         $rentTotal = round(max(0, $base + $extrasTotal - $discount + $penalty), 2);
 
-        $deposit = (float) ($rental->deposit_amount ?? 0);
+        $deposit = (float) $groupRentals->sum(fn($item) => (float) ($item->deposit_amount ?? 0));
         $total = round($rentTotal + $deposit, 2);
 
-        $paid = (float) $rental->payments->where('status', 'paid')->sum('amount');
+        $paid = (float) $groupRentals
+            ->flatMap(fn($item) => $item->payments)
+            ->where('status', 'paid')
+            ->sum('amount');
         $remaining = round(max(0, $total - $paid), 2);
 
         $statusLabels = [
@@ -417,6 +494,7 @@ class Show extends Component
 
         return view('livewire.manager.rentals.show', compact(
             'rental',
+            'groupRentals',
             'days',
             'base',
             'extrasLines',
