@@ -88,19 +88,6 @@
                         <textarea name="notes" rows="3" class="mt-1 w-full rounded border-gray-300">{{ old('notes') }}</textarea>
                         @error('notes') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                     </div>
-                    <div class="md:col-span-2">
-                        <label class="text-xs text-gray-500">Дополнительные автомобили</label>
-                        <select name="additional_car_ids[]" multiple class="mt-1 w-full rounded border-gray-300 h-32">
-                            @foreach(($additionalCars ?? []) as $extraCar)
-                                <option value="{{ $extraCar->id }}" @selected(collect(old('additional_car_ids'))->contains($extraCar->id))>
-                                    {{ $extraCar->brand }} {{ $extraCar->model }} • {{ $extraCar->plate_number }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <div class="text-xs text-gray-500 mt-1">Используйте Ctrl/Cmd для выбора нескольких.</div>
-                        @error('additional_car_ids') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                        @error('additional_car_ids.*') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-                    </div>
                     <div class="md:col-span-2 bg-gray-50 rounded p-3">
                         <label class="inline-flex items-center gap-2 text-sm">
                             <input type="checkbox" name="use_trusted_person" value="1" @checked(old('use_trusted_person')) class="rounded border-gray-300" />

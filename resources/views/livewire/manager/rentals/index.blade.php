@@ -68,6 +68,11 @@
 
                     <tbody class="divide-y">
                     @forelse($rentals as $r)
+                    @php
+                        $group = $r->group_uuid ? ($groupTotals[$r->group_uuid] ?? null) : null;
+                        $carLabel = trim(($r->car?->brand ?? '').' '.($r->car?->model ?? ''));
+                        $carCount = $group['cars_count'] ?? 1;
+                    @endphp
                     <tr wire:key="rental-{{ $r->id }}" class="hover:bg-gray-50">
                         <td class="px-4 py-3 font-mono text-xs">#{{ $r->id }}</td>
 
@@ -82,11 +87,14 @@
 
                         <td class="px-4 py-3">
                             <div class="font-medium">
-                                {{ $r->car?->brand }} {{ $r->car?->model }}
+                                {{ $carLabel ?: '—' }}
                             </div>
                             <div class="text-xs text-gray-500 font-mono">
                                 {{ $r->car?->plate_number ?? '—' }}
                             </div>
+                            @if($carCount > 1)
+                                <div class="text-xs text-gray-500">+ ещё {{ $carCount - 1 }} авто</div>
+                            @endif
                         </td>
 
                         <td class="px-4 py-3">
@@ -100,9 +108,12 @@
 
                         <td class="px-4 py-3">
                             @php
-                            $rent = (float) ($r->grand_total ?? $r->base_total ?? 0);
-                            $deposit = (float) ($r->deposit_amount ?? 0);
-                            $total = $rent + $deposit;
+                            $total = (float) ($group['total'] ?? 0);
+                            if (! $group) {
+                                $rent = (float) ($r->grand_total ?? $r->base_total ?? 0);
+                                $deposit = (float) ($r->deposit_amount ?? 0);
+                                $total = $rent + $deposit;
+                            }
                             @endphp
 
                             {{ $total > 0 ? number_format($total, 2, '.', ' ') . ' ₽' : '—' }}

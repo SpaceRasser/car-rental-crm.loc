@@ -54,6 +54,17 @@ class Index extends Component
 
         $rentals = Rental::query()
             ->with(['car', 'client'])
+            ->when(true, function ($query) {
+                $groupIds = Rental::query()
+                    ->selectRaw('MIN(id) as id')
+                    ->whereNotNull('group_uuid')
+                    ->groupBy('group_uuid');
+
+                $query->where(function ($q) use ($groupIds) {
+                    $q->whereNull('group_uuid')
+                        ->orWhereIn('id', $groupIds);
+                });
+            })
             ->when($this->q !== '', function ($query) {
                 $q = trim($this->q);
 
@@ -83,6 +94,34 @@ class Index extends Component
             ->orderByDesc('id')
             ->paginate($this->perPage);
 
-        return view('livewire.manager.rentals.index', compact('rentals', 'statuses'));
+        $groupUuids = $rentals->pluck('group_uuid')->filter()->unique()->values();
+        $groupTotals = collect();
+
+        if ($groupUuids->isNotEmpty()) {
+            $groupRentals = Rental::query()
+                ->with(['car'])
+                ->whereIn('group_uuid', $groupUuids)
+                ->get()
+                ->groupBy('group_uuid');
+
+            $groupTotals = $groupRentals->map(function ($items) {
+                $grand = (float) $items->sum(fn($item) => (float) ($item->grand_total ?? 0));
+                $deposit = (float) $items->sum(fn($item) => (float) ($item->deposit_amount ?? 0));
+
+                return [
+                    'total' => round($grand + $deposit, 2),
+                    'cars_count' => $items->count(),
+                    'cars' => $items->map(function ($item) {
+                        return [
+                            'label' => trim(($item->car?->brand ?? '').' '.($item->car?->model ?? '')),
+                            'plate' => $item->car?->plate_number,
+                            'is_trusted' => (bool) $item->is_trusted_person,
+                        ];
+                    })->values(),
+                ];
+            });
+        }
+
+        return view('livewire.manager.rentals.index', compact('rentals', 'statuses', 'groupTotals'));
     }
 }
