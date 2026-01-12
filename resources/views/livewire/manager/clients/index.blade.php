@@ -1,6 +1,12 @@
 <div class="py-6">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
 
+        @if (session('ok'))
+        <div class="bg-green-50 border border-green-200 text-green-800 p-3 rounded">
+            {{ session('ok') }}
+        </div>
+        @endif
+
 
         {{-- Фильтры --}}
         <div class="bg-white p-4 rounded shadow">
@@ -88,10 +94,17 @@
                         </td>
 
                         <td class="px-4 py-3">
-                            <a href="{{ route('manager.clients.show', $c) }}"
-                               class="px-3 py-1.5 rounded bg-gray-800 text-white text-xs hover:opacity-90">
-                                Подробнее
-                            </a>
+                            <div class="flex flex-wrap gap-2">
+                                <a href="{{ route('manager.clients.show', $c) }}"
+                                   class="px-3 py-1.5 rounded bg-gray-800 text-white text-xs hover:opacity-90">
+                                    Подробнее
+                                </a>
+                                <button type="button"
+                                        wire:click="toggleBlocked({{ $c->id }})"
+                                        class="px-3 py-1.5 rounded border text-xs">
+                                    {{ $c->reliability_status === 'blocked' ? 'Разблокировать' : 'Заблокировать' }}
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     @empty
