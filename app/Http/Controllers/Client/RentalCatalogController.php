@@ -113,6 +113,8 @@ class RentalCatalogController extends Controller
             'trusted_person_license_number' => ['nullable', 'string', 'max:50'],
         ]);
 
+        $useTrustedPerson = (bool) ($data['use_trusted_person'] ?? false);
+
         Rental::create([
             'car_id' => $car->id,
             'client_id' => $client->id,
@@ -124,10 +126,10 @@ class RentalCatalogController extends Controller
             'notes' => $data['notes'] ?? null,
             'purpose' => 'Запрос из клиентского каталога',
             'group_uuid' => (string) \Illuminate\Support\Str::uuid(),
-            'is_trusted_person' => (bool) ($data['use_trusted_person'] ?? false),
-            'trusted_person_name' => $data['use_trusted_person'] ? ($data['trusted_person_name'] ?? null) : null,
-            'trusted_person_phone' => $data['use_trusted_person'] ? ($data['trusted_person_phone'] ?? null) : null,
-            'trusted_person_license_number' => $data['use_trusted_person'] ? ($data['trusted_person_license_number'] ?? null) : null,
+            'is_trusted_person' => $useTrustedPerson,
+            'trusted_person_name' => $useTrustedPerson ? ($data['trusted_person_name'] ?? null) : null,
+            'trusted_person_phone' => $useTrustedPerson ? ($data['trusted_person_phone'] ?? null) : null,
+            'trusted_person_license_number' => $useTrustedPerson ? ($data['trusted_person_license_number'] ?? null) : null,
         ]);
 
         return redirect()
