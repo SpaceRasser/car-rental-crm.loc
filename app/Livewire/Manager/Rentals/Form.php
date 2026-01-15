@@ -19,7 +19,6 @@ class Form extends Component
     public string $starts_at = '';
     public string $ends_at = '';
 
-    public string $status = 'new';
     public ?string $notes = null;
 
     // цены (подставляем из авто)
@@ -87,7 +86,6 @@ class Form extends Component
             'daily_price' => ['required', 'numeric', 'min:0'],
             'deposit_amount' => ['required', 'numeric', 'min:0'],
 
-            'status' => ['required', Rule::in(['new', 'confirmed', 'active', 'closed', 'cancelled', 'overdue'])],
             'notes' => ['nullable', 'string', 'max:5000'],
             'carBlocks.*.use_trusted_person' => ['boolean'],
             'carBlocks.*.trusted_person_name' => ['nullable', 'string', 'max:120'],
@@ -350,7 +348,7 @@ class Form extends Component
                 'starts_at' => $from,
                 'ends_at'   => $to,
 
-                'status' => $data['status'],
+                'status' => 'new',
                 'notes'  => $data['notes'] ?? null,
 
                 'group_uuid' => $groupUuid,
@@ -513,15 +511,6 @@ class Form extends Component
             ->limit(300)
             ->get();
 
-        $statuses = [
-            'new' => 'Новая',
-            'confirmed' => 'Подтверждена',
-            'active' => 'Активна',
-            'closed' => 'Закрыта',
-            'cancelled' => 'Отменена',
-            'overdue' => 'Просрочена',
-        ];
-
-        return view('livewire.manager.rentals.form', compact('clients', 'cars', 'statuses'));
+        return view('livewire.manager.rentals.form', compact('clients', 'cars'));
     }
 }
