@@ -41,6 +41,16 @@ class PaymentsController extends Controller
             'provider_payload' => ['gateway' => 'fake'],
         ]);
 
+        $groupRentals = $rental->group_uuid
+            ? Rental::query()->where('group_uuid', $rental->group_uuid)->get()
+            : collect([$rental]);
+
+        foreach ($groupRentals as $item) {
+            if ($item->status === 'new') {
+                $item->update(['status' => 'confirmed']);
+            }
+        }
+
         return redirect()->route('profile.edit')->with('status', 'payment-paid');
     }
 }
